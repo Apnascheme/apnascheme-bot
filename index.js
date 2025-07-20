@@ -16,12 +16,12 @@ app.get('/', (req, res) => {
 // Webhook endpoint
 app.post('/webhook', async (req, res) => {
   const payload = req.body;
-  const sender = payload?.payload?.source;
-  const message = payload?.payload?.payload?.text;
+  const sender = payload.sender;
+  const message = payload.message?.text;
 
   console.log(`Incoming message from ${sender} : ${message}`);
 
-  if (message && message.toLowerCase() === 'hi') {
+  if (message && message.toLowerCase() === 'Hi') {
     const msgParams = {
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
