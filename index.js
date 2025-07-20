@@ -31,9 +31,9 @@ app.post('/gupshup', async (req, res) => {
             channel: 'whatsapp',
             source: process.env.GUPSHUP_PHONE_NUMBER,
             destination: sender,
-            'src.name': 'ApnaSchemeBot',
+            'src.name': 'ApnaSchemeTechnologies',
             template: 'language_selection_v1',
-            templateParams: '[]',
+            templateParams: JSON.stringify([]),
           },
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
