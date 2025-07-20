@@ -20,7 +20,7 @@ app.post('/gupshup', async (req, res) => {
   const sender = req.body.payload?.source;
   const message = req.body.payload?.payload?.text;
 
-  console.log(Incoming message from ${sender} : ${message});
+  console.log(`Incoming message from ${sender} : ${message}`);
 
   if (message && message.toLowerCase() === 'Hi') {
     const msgParams = {
@@ -55,7 +55,7 @@ app.post('/gupshup', async (req, res) => {
     } catch (error) {
       console.error(` Error sending message:`);
       if (error.response) {
-        console.error(Status: ${error.response.status});
+        console.error(`Status: ${error.response.status}`);
         console.error(Data:, error.response.data);
       } else {
         console.error(error.message);
