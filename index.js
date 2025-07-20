@@ -59,7 +59,7 @@ app.post('/gupshup', async (req, res) => {
   console.error(` Error sending message:`);
   if (error.response) {
     console.error(`Status: ${error.response.status}`);
-    console.error( Data:, error.response.data);
+    console.error( `Data:, error.response.data`);
   } else {
     console.error(error.message);
   }
