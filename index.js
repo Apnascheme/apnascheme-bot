@@ -15,16 +15,13 @@ app.get('/', (req, res) => {
 
 // Webhook endpoint
 app.post('/gupshup', async (req, res) => {
-
   console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 
-  
   const sender = req.body.payload?.source;
   const message = req.body.payload?.payload?.text;
 
   console.log(`Incoming message from ${sender} : ${message}`);
 
- 
   if (message && message.toLowerCase() === 'Hi') {
     const msgParams = {
       channel: 'whatsapp',
@@ -45,25 +42,26 @@ app.post('/gupshup', async (req, res) => {
     console.log("Headers:");
     console.log(headers);
 
- try {
-  const response = await axios.post(
-    'https://api.gupshup.io/sm/api/v1/msg',
-    new URLSearchParams(msgParams).toString(),
-    { headers }
-  );
+    try {
+      const response = await axios.post(
+        'https://api.gupshup.io/sm/api/v1/msg',
+        new URLSearchParams(msgParams).toString(),
+        { headers }
+      );
 
-  console.log(` Message sent successfully.`);
-  console.log(` Gupshup response status: ${response.status}`);
-  console.log( `Gupshup response data:, response.data`);
-} catch (error) {
-  console.error(` Error sending message:`);
-  if (error.response) {
-    console.error(`Status: ${error.response.status}`);
-    console.error(`Data:, error.response.data`);
-  } else {
-    console.error(error.message);
+      console.log(` Message sent successfully.`);
+      console.log(` Gupshup response status: ${response.status}`);
+      console.log(`Gupshup response data:`, response.data);
+    } catch (error) {
+      console.error(` Error sending message:`);
+      if (error.response) {
+        console.error(`Status: ${error.response.status}`);
+        console.error(`Data:`, error.response.data);
+      } else {
+        console.error(error.message);
+      }
+    }
   }
-}
   res.sendStatus(200);
 });
 
