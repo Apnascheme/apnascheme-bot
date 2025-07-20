@@ -8,19 +8,20 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Health check
+// Health check route
 app.get('/', (req, res) => {
   res.send('ApnaScheme Bot is running');
 });
 
-// Webhook to receive messages
+// Webhook route for Gupshup
 app.post('/gupshup', async (req, res) => {
   const incoming = req.body;
 
   try {
     const message = incoming.payload?.payload?.text?.toLowerCase();
     const sender = incoming.payload?.sender?.phone;
-    console.log(`Incoming message from ${sender} : ${message}`);
+
+    console.log(Incoming message from ${sender} : ${message});
 
     if (message === 'hi') {
       const response = await axios.post(
@@ -31,9 +32,9 @@ app.post('/gupshup', async (req, res) => {
             channel: 'whatsapp',
             source: process.env.GUPSHUP_PHONE_NUMBER,
             destination: sender,
-            'src.name': 'ApnaSchemeTechnologies',
-            template: 'language_selection_v1',
-            templateParams: JSON.stringify([]),
+            'src.name': 'ApnaSchemeTechnologies', // ✅ Match your bot name
+            template: 'language_selection_v1',    // ✅ Match approved template
+            templateParams: '[]',                 // ✅ No params in this template
           },
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -42,18 +43,19 @@ app.post('/gupshup', async (req, res) => {
         }
       );
 
-      console.log('Reply sent to user');
+      console.log('✅ Reply sent to user');
       return res.sendStatus(200);
     } else {
-      console.log('Message did not match "hi"');
+      console.log('⚠ Message did not match "hi"');
       return res.sendStatus(200);
     }
+
   } catch (error) {
-    console.error("Error sending message:", error.response?.data || error.message);
+    console.error('❌ Error sending message:', error.response?.data || error.message);
     return res.sendStatus(500);
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`ApnaScheme bot server started on port ${PORT}`);
+  console.log(🚀 ApnaScheme bot server started on port ${PORT});
 });
