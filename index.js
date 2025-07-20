@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
 });
 
 // Webhook endpoint
-app.post('/webhook', async (req, res) => {
+app.post('/gupshup', async (req, res) => {
   const payload = req.body;
   const sender = payload.sender;
   const message = payload.message?.text;
@@ -23,9 +23,9 @@ app.post('/webhook', async (req, res) => {
 
   if (message && message.toLowerCase() === 'Hi') {
     const msgParams = {
-      channel: 'whatsapp',
+      channel:'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: sender,
+      destination:sender,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'language_selection_v1',
       templateParams: '[]'
@@ -37,7 +37,7 @@ app.post('/webhook', async (req, res) => {
     };
 
     // Log the parameters for debugging
-    console.log(" Sending message with params:");
+    console.log("Sending message with params:");
     console.log(msgParams);
     console.log("Headers:");
     console.log(headers);
