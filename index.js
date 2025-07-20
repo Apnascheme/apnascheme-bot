@@ -15,17 +15,21 @@ app.get('/', (req, res) => {
 
 // Webhook endpoint
 app.post('/gupshup', async (req, res) => {
-  const payload = req.body;
-  const sender = payload.sender;
-  const message = payload.message?.text;
 
-  console.log(`Incoming message from ${sender} : ${message}`);
+  console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 
+  
+  const sender = req.body.payload?.source;
+  const message = req.body.payload?.payload?.text;
+
+  console.log(Incoming message from ${sender} : ${message});
+
+ 
   if (message && message.toLowerCase() === 'Hi') {
     const msgParams = {
-      channel:'whatsapp',
+      channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination:sender,
+      destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'language_selection_v1',
       templateParams: '[]'
@@ -36,7 +40,6 @@ app.post('/gupshup', async (req, res) => {
       apikey: process.env.GUPSHUP_APP_TOKEN
     };
 
-    // Log the parameters for debugging
     console.log("Sending message with params:");
     console.log(msgParams);
     console.log("Headers:");
@@ -48,10 +51,9 @@ app.post('/gupshup', async (req, res) => {
         new URLSearchParams(msgParams).toString(),
         { headers }
       );
-
-      console.log(` Message sent. Gupshup response: ${response.status}`);
+      console.log(Message sent. Gupshup response: ${response.status});
     } catch (error) {
-      console.error( `Error sending message: ${error.response?.data || error.message}`);
+      console.error(Error sending message: ${error.response?.data || error.message});
     }
   }
 
