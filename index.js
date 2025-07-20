@@ -52,16 +52,16 @@ app.post('/gupshup', async (req, res) => {
     { headers }
   );
 
-  console.log( Message sent successfully.);
+  console.log(` Message sent successfully.`);
   console.log(` Gupshup response status: ${response.status}`);
-  console.log( Gupshup response data:, response.data);
+  console.log( `Gupshup response data:, response.data`);
 } catch (error) {
-  console.error( Error sending message:);
+  console.error( `Error sending message:`);
   if (error.response) {
     console.error(`Status: ${error.response.status}`);
-    console.error( Data:, error.response.data);
+    console.error( `Data:, error.response.data`);
   } else {
-    console.error(error.message);
+    console.error(`error.message`);
   }
 }
   res.sendStatus(200);
