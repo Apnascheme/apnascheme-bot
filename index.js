@@ -7,19 +7,19 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// Health check
+// Home route
 app.get('/', (req, res) => {
   res.send('ApnaScheme Bot is running!');
 });
 
-// ✅ Gupshup Webhook endpoint
+// ✅ Gupshup webhook POST handler
 app.post('/gupshup', (req, res) => {
   console.log('📨 Webhook received from Gupshup:', req.body);
 
-  // Respond with 200 so Gupshup knows it's valid
-  res.status(200).send('Webhook received');
+  // Always respond 200 to acknowledge receipt
+  res.sendStatus(200);
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server live on http://localhost:${PORT}`);
+  console.log(`Server started on http://localhost:${PORT}`);
 });
