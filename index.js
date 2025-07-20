@@ -29,7 +29,7 @@ app.post('/gupshup', async (req, res) => {
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'language_selection_v1',
-      templateParams: '[]'
+      templateParams: JSON.stringify([])
     };
 
     const headers = {
