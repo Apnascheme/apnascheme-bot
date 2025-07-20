@@ -60,7 +60,7 @@ app.post('/webhook', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(\n` ApnaScheme bot server started on port ${PORT}`);
+  console.log(` ApnaScheme bot server started on port ${PORT}`);
   console.log(==> Available at your primary URL https://apnascheme-bot.onrender.com);
   console.log('///////////////////////////////////////////////////////////\n');
 });
