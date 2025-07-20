@@ -8,54 +8,59 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Health check route
+// Test route
 app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running');
+  res.send('ApnaScheme Bot is running 🚀');
 });
 
-// Webhook route for Gupshup
-app.post('/gupshup', async (req, res) => {
-  const incoming = req.body;
+// Webhook endpoint
+app.post('/webhook', async (req, res) => {
+  const payload = req.body;
+  const sender = payload?.payload?.source;
+  const message = payload?.payload?.payload?.text;
 
-  try {
-    const message = incoming.payload?.payload?.text?.toLowerCase();
-    const sender = incoming.payload?.sender?.phone;
+  console.log(`Incoming message from ${sender} : ${message}`);
 
-    console.log(`Incoming message from ${sender} : ${message}`);
+  if (message && message.toLowerCase() === 'hi') {
+    const msgParams = {
+      channel: 'whatsapp',
+      source: process.env.GUPSHUP_PHONE_NUMBER,
+      destination: sender,
+      'src.name': 'ApnaSchemeTechnologies',
+      template: 'language_selection_v1',
+      templateParams: '[]'
+    };
 
-    if (message === 'hi') {
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      apikey: process.env.GUPSHUP_APP_TOKEN
+    };
+
+    // Log the parameters for debugging
+    console.log("🔥 Sending message with params:");
+    console.log(msgParams);
+    console.log("🧾 Headers:");
+    console.log(headers);
+
+    try {
       const response = await axios.post(
         'https://api.gupshup.io/sm/api/v1/msg',
-        null,
-        {
-          params: {
-            channel: 'whatsapp',
-            source: process.env.GUPSHUP_PHONE_NUMBER,
-            destination: sender,
-            'src.name': 'ApnaSchemeTechnologies', // ✅ Match your bot name
-            template: 'language_selection_v1',    // ✅ Match approved template
-            templateParams: '[]',                 // ✅ No params in this template
-          },
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            apikey: process.env.GUPSHUP_APP_TOKEN,
-          },
-        }
+        new URLSearchParams(msgParams).toString(),
+        { headers }
       );
 
-      console.log('✅ Reply sent to user');
-      return res.sendStatus(200);
-    } else {
-      console.log('⚠ Message did not match "hi"');
-      return res.sendStatus(200);
+      console.log(✅ Message sent. Gupshup response: ${response.status});
+    } catch (error) {
+      console.error(❌ Error sending message: ${error.response?.data || error.message});
     }
-
-  } catch (error) {
-    console.error('❌ Error sending message:', error.response?.data || error.message);
-    return res.sendStatus(500);
   }
+
+  res.sendStatus(200);
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 ApnaScheme bot server started on port ${PORT}`);
+  console.log(\n✅` ApnaScheme bot server started on port ${PORT}`);
+  console.log(==> Available at your primary URL https://apnascheme-bot.onrender.com);
+  console.log('///////////////////////////////////////////////////////////\n');
 });
