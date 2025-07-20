@@ -20,7 +20,7 @@ app.post('/gupshup', async (req, res) => {
   try {
     const message = incoming.payload?.payload?.text?.toLowerCase();
     const sender = incoming.payload?.sender?.phone;
-    console.log('Incoming message from ${sender} : ${message}');
+    console.log(Incoming message from ${sender} : ${message});
 
     if (message === 'hi') {
       const response = await axios.post(
@@ -48,11 +48,12 @@ app.post('/gupshup', async (req, res) => {
       console.log('Message did not match "hi"');
       return res.sendStatus(200);
     }
+  } catch (error) {
+    console.error("Error sending message:", error.response?.data || error.message);
+    return res.sendStatus(500);
   }
-  .catch ((error)=> {
-    console.error("Error sending message:",error.response?.data|| error.message);
 });
 
 app.listen(PORT, () => {
-  console.log('ApnaScheme bot server started on port ${PORT}');
+  console.log(ApnaScheme bot server started on port ${PORT});
 });
