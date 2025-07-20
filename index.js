@@ -20,7 +20,7 @@ app.post('/gupshup', async (req, res) => {
   try {
     const message = incoming.payload?.payload?.text?.toLowerCase();
     const sender = incoming.payload?.sender?.phone;
-    console.log(Incoming message from ${sender} : ${message});
+    console.log(`Incoming message from ${sender} : ${message}`);
 
     if (message === 'hi') {
       const response = await axios.post(
