@@ -56,7 +56,7 @@ app.post('/gupshup', async (req, res) => {
   console.log(` Gupshup response status: ${response.status}`);
   console.log( `Gupshup response data:, response.data`);
 } catch (error) {
-  console.error( Error sending message:);
+  console.error(` Error sending message:`);
   if (error.response) {
     console.error(`Status: ${error.response.status}`);
     console.error( Data:, error.response.data);
