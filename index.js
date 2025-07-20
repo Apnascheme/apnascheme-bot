@@ -1,40 +1,64 @@
-const express = require('express');
-const bodyParser = require('body-parser');
 require('dotenv').config();
+const express = require('express');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Test route
-app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is live!');
+// For Gupshup webhook verification (GET)
+app.get('/gupshup', (req, res) => {
+  res.sendStatus(200);
 });
 
-// Gupshup Webhook route
-app.post('/gupshup', (req, res) => {
-  const payload = req.body;
+// POST webhook for incoming messages
+app.post('/gupshup', async (req, res) => {
+  const { type, payload } = req.body;
 
-  // Verify if it's from your bot's number
-  const phoneNumber = process.env.GUPSHUP_PHONE_NUMBER;
+  console.log('📩 Incoming:', JSON.stringify(req.body, null, 2));
 
-  // Safety check
-  if (!payload || !payload.payload || !payload.payload.sender) {
-    return res.status(400).send('Invalid payload');
+  // Check if message is valid
+  if (type === 'user-event' && payload?.type === 'message') {
+    const phone = payload.sender?.phone;
+    const msgText = payload.payload?.text?.toLowerCase();
+
+    if (msgText === 'hi') {
+      try {
+        await axios.post('https://api.gupshup.io/sm/api/v1/msg', null, {
+          params: {
+            channel: 'whatsapp',
+            source: process.env.GUPSHUP_PHONE_NUMBER,
+            destination: phone,
+            message: JSON.stringify({
+              type: 'template',
+              template: {
+                namespace: '9a699086-7c8a-4849-a105-42627f4e882f',
+                name: 'language_selection_v1',
+                language: {
+                  code: 'en'
+                }
+              }
+            }),
+            'src.name': 'ApnaScheme',
+          },
+          headers: {
+            apikey: process.env.GUPSHUP_APP_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        });
+
+        console.log('✅ Reply sent to:', phone);
+      } catch (err) {
+        console.error('❌ Error sending reply:', err.response?.data || err.message);
+      }
+    }
   }
 
-  const from = payload.payload.sender.phone;
-  const message = payload.payload.payload.text;
-
-  console.log(`📩 Incoming message from ${from}: ${message}`);
-
-  // TODO: Add response logic here (next step)
-  res.sendStatus(200); // Acknowledge Gupshup
+  res.sendStatus(200);
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(🚀 ApnaScheme bot server started on port ${PORT});
 });
