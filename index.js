@@ -55,5 +55,5 @@ app.post('/gupshup', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(ApnaScheme bot server started on port ${PORT});
+  console.log(`ApnaScheme bot server started on port ${PORT}`);
 });
