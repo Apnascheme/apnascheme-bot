@@ -51,7 +51,7 @@ app.post('/webhook', async (req, res) => {
 
       console.log(` Message sent. Gupshup response: ${response.status}`);
     } catch (error) {
-      console.error( Error sending message: ${error.response?.data || error.message});
+      console.error( `Error sending message: ${error.response?.data || error.message}`);
     }
   }
 
