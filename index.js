@@ -21,7 +21,7 @@ app.post('/gupshup', async (req, res) => {
     const message = incoming.payload?.payload?.text?.toLowerCase();
     const sender = incoming.payload?.sender?.phone;
 
-    console.log(Incoming message from ${sender} : ${message});
+    console.log(`Incoming message from ${sender} : ${message}`);
 
     if (message === 'hi') {
       const response = await axios.post(
@@ -57,5 +57,5 @@ app.post('/gupshup', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(🚀 ApnaScheme bot server started on port ${PORT});
+  console.log(`🚀 ApnaScheme bot server started on port ${PORT}`);
 });
