@@ -5,21 +5,36 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(bodyParser.json());
 
-// Home route
+// Test route
 app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running!');
+  res.send('ApnaScheme Bot is live!');
 });
 
-// ✅ Gupshup webhook POST handler
+// Gupshup Webhook route
 app.post('/gupshup', (req, res) => {
-  console.log('📨 Webhook received from Gupshup:', req.body);
+  const payload = req.body;
 
-  // Always respond 200 to acknowledge receipt
-  res.sendStatus(200);
+  // Verify if it's from your bot's number
+  const phoneNumber = process.env.GUPSHUP_PHONE_NUMBER;
+
+  // Safety check
+  if (!payload || !payload.payload || !payload.payload.sender) {
+    return res.status(400).send('Invalid payload');
+  }
+
+  const from = payload.payload.sender.phone;
+  const message = payload.payload.payload.text;
+
+  console.log(`📩 Incoming message from ${from}: ${message}`);
+
+  // TODO: Add response logic here (next step)
+  res.sendStatus(200); // Acknowledge Gupshup
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
