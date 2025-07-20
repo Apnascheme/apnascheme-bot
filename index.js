@@ -1,64 +1,59 @@
-require('dotenv').config();
-const express = require('express');
-const axios = require('axios');
+import express from 'express';
+import dotenv from 'dotenv';
+import axios from 'axios';
 
+dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// For Gupshup webhook verification (GET)
-app.get('/gupshup', (req, res) => {
-  res.sendStatus(200);
+// Health check
+app.get('/', (req, res) => {
+  res.send('ApnaScheme Bot is running');
 });
 
-// POST webhook for incoming messages
+// Webhook to receive messages
 app.post('/gupshup', async (req, res) => {
-  const { type, payload } = req.body;
+  const incoming = req.body;
 
-  console.log('📩 Incoming:', JSON.stringify(req.body, null, 2));
+  try {
+    const message = incoming.payload?.payload?.text?.toLowerCase();
+    const sender = incoming.payload?.sender?.phone;
+    console.log('Incoming message from ${sender} : ${message}');
 
-  // Check if message is valid
-  if (type === 'user-event' && payload?.type === 'message') {
-    const phone = payload.sender?.phone;
-    const msgText = payload.payload?.text?.toLowerCase();
-
-    if (msgText === 'hi') {
-      try {
-        await axios.post('https://api.gupshup.io/sm/api/v1/msg', null, {
+    if (message === 'hi') {
+      const response = await axios.post(
+        'https://api.gupshup.io/sm/api/v1/msg',
+        null,
+        {
           params: {
             channel: 'whatsapp',
             source: process.env.GUPSHUP_PHONE_NUMBER,
-            destination: phone,
-            message: JSON.stringify({
-              type: 'template',
-              template: {
-                namespace: '9a699086-7c8a-4849-a105-42627f4e882f',
-                name: 'language_selection_v1',
-                language: {
-                  code: 'en'
-                }
-              }
-            }),
-            'src.name': 'ApnaScheme',
+            destination: sender,
+            'src.name': 'ApnaSchemeBot',
+            template: 'language_selection_v1',
+            templateParams: '[]',
           },
           headers: {
-            apikey: process.env.GUPSHUP_APP_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded',
+            apikey: process.env.GUPSHUP_APP_TOKEN,
           },
-        });
+        }
+      );
 
-        console.log('✅ Reply sent to:', phone);
-      } catch (err) {
-        console.error('❌ Error sending reply:', err.response?.data || err.message);
-      }
+      console.log('Reply sent to user');
+      return res.sendStatus(200);
+    } else {
+      console.log('Message did not match "hi"');
+      return res.sendStatus(200);
     }
+  } catch (error) {
+    console.error('Error sending message:', error.message);
+    return res.sendStatus(500);
   }
-
-  res.sendStatus(200);
 });
 
-// Start server
 app.listen(PORT, () => {
-  console.log(🚀 ApnaScheme bot server started on port ${PORT});
+  console.log('ApnaScheme bot server started on port ${PORT}');
 });
