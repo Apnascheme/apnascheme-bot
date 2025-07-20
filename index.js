@@ -45,18 +45,25 @@ app.post('/gupshup', async (req, res) => {
     console.log("Headers:");
     console.log(headers);
 
-    try {
-      const response = await axios.post(
-        'https://api.gupshup.io/sm/api/v1/msg',
-        new URLSearchParams(msgParams).toString(),
-        { headers }
-      );
-      console.log(`Message sent. Gupshup response: ${response.status}`);
-    } catch (error) {
-      console.error(`Error sending message: ${error.response?.data || error.message}`);
-    }
-  }
+ try {
+  const response = await axios.post(
+    'https://api.gupshup.io/sm/api/v1/msg',
+    new URLSearchParams(msgParams).toString(),
+    { headers }
+  );
 
+  console.log( Message sent successfully.);
+  console.log(` Gupshup response status: ${response.status}`);
+  console.log( Gupshup response data:, response.data);
+} catch (error) {
+  console.error( Error sending message:);
+  if (error.response) {
+    console.error(`Status: ${error.response.status}`);
+    console.error( Data:, error.response.data);
+  } else {
+    console.error(error.message);
+  }
+}
   res.sendStatus(200);
 });
 
