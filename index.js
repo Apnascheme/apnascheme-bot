@@ -34,7 +34,7 @@ app.post('/gupshup', async (req, res) => {
     const msgParams = {
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER, // Your Gupshup virtual number
-      destination: sender || phone,
+      destination:phone,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'welcome_user',
       templateParams: JSON.stringify([])
