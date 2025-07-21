@@ -22,7 +22,7 @@ app.post('/gupshup', async (req, res) => {
   const sender = req.body.payload?.source;
   const message = req.body.payload?.payload?.text;
 
-  console.log(Incoming message from ${sender} : ${message});
+  console.log(`Incoming message from ${sender} : ${message}`);
 
  
   if (message && message.toLowerCase() === 'Hi') {
@@ -51,9 +51,9 @@ app.post('/gupshup', async (req, res) => {
         new URLSearchParams(msgParams).toString(),
         { headers }
       );
-      console.log(Message sent. Gupshup response: ${response.status});
+      console.log(`Message sent. Gupshup response: ${response.status}`);
     } catch (error) {
-      console.error(Error sending message: ${error.response?.data || error.message});
+      console.error(`Error sending message: ${error.response?.data || error.message}`);
     }
   }
 
