@@ -32,7 +32,7 @@ app.post('/gupshup', async (req, res) => {
           channel: 'whatsapp',
           source: BOT_PHONE,
           destination: sender,
-          src.name: process.env.GUPSHUP_BOTNAME,
+          "src.name": process.env.GUPSHUP_BOTNAME,
           message: JSON.stringify({
             type: 'template',
             template: {
