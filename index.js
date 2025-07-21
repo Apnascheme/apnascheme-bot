@@ -17,6 +17,7 @@ app.post('/', async (req, res) => {
 
   if (message === 'Hi') {
     const replyText = `Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:\n🔘 हिंदी 🔘 English 🔘 मराठी`;
+console.log("Sending reply to user:", replyText);
 
     try {
       await axios.post('https://api.gupshup.io/sm/api/v1/msg', null, {
@@ -32,6 +33,12 @@ app.post('/', async (req, res) => {
           'apikey': process.env.GUPSHUP_API_KEY,
         },
       });
+.then(response => {
+  console.log("Message sent successfully:", response.data);
+})
+.catch(error => {
+  console.error("Error sending message:", error.response?.data || error.message);
+});
 
       res.sendStatus(200); // Acknowledge webhook
     } catch (error) {
