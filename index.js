@@ -44,7 +44,7 @@ async function sendTextMessage(phoneNumber, message) {
         source: process.env.SOURCE_PHONE, // your Gupshup registered number
         destination: phoneNumber,
         message: message,
-        src.name: process.env.BOT_NAME,
+        "src.name": process.env.BOT_NAME,
       }),
       {
         headers: {
