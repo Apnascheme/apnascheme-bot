@@ -1,5 +1,6 @@
 
-   require('dotenv').config();
+
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 
@@ -143,7 +144,7 @@ app.use((error, req, res, next) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use((req, res) => {
   console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     status: 'error',
