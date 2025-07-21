@@ -15,15 +15,15 @@ app.post('/', async (req, res) => {
   const message = incoming.payload?.payload?.text?.toLowerCase();
   const userPhone = incoming.payload?.sender?.phone;
 
-  if (message === 'Hi') {
+  if (message === 'hi') {
     const replyText = `Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:\n🔘 हिंदी 🔘 English 🔘 मराठी`;
-console.log("Sending reply to user:", replyText);
+    console.log("Sending reply to user:", replyText);
 
     try {
-      await axios.post('https://api.gupshup.io/sm/api/v1/msg', null, {
+      const response = await axios.post('https://api.gupshup.io/sm/api/v1/msg', null, {
         params: {
           channel: 'whatsapp',
-          source: process.env.GUPSHUP_PHONE, 
+          source: process.env.GUPSHUP_PHONE,
           destination: userPhone,
           message: replyText,
           'src.name': process.env.GUPSHUP_BOTNAME
@@ -33,20 +33,15 @@ console.log("Sending reply to user:", replyText);
           'apikey': process.env.GUPSHUP_API_KEY,
         },
       });
-.then(response => {
-  console.log("Message sent successfully:", response.data);
-})
-.catch(error => {
-  console.error("Error sending message:", error.response?.data || error.message);
-});
 
-      res.sendStatus(200); // Acknowledge webhook
+      console.log("Message sent successfully:", response.data);
+      res.sendStatus(200);
     } catch (error) {
-      console.error('Error sending message to Gupshup:', error.response?.data || error.message);
+      console.error("Error sending message:", error.response?.data || error.message);
       res.sendStatus(500);
     }
   } else {
-    res.sendStatus(200); // No-op for other messages for now
+    res.sendStatus(200); // No-op for other messages
   }
 });
 
@@ -57,3 +52,4 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
