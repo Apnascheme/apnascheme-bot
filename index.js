@@ -46,7 +46,7 @@ app.post('/gupshup', async (req, res) => {
       'Content-Type': 'application/x-www-form-urlencoded',
       apikey: process.env.GUPSHUP_APP_TOKEN
     };
-
+console.log("GUPSHUP_APP_TOKEN is:", process.env.GUPSHUP_APP_TOKEN);
     console.log("Sending message with params:", msgParams);
 
     try {
