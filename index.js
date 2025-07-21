@@ -76,7 +76,7 @@ async function sendTextFallback(to, text) {
         source: BOT_PHONE,
         destination: to,
         message: text,
-        'src.name': process.env.GUPSHUP_BOTNAME
+        "src.name": process.env.GUPSHUP_BOTNAME
       },
       headers: {
         apikey: GUPSHUP_API_KEY,
