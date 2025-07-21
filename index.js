@@ -8,28 +8,33 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Test route
-app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running ');
-});
 
-// Webhook endpoint
-app.post('/gupshup', async (req, res) => {
+app.post('/webhook', async (req, res) => {
+  const body = req.body;
 
-  console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
+  console.log("Full incoming payload:", JSON.stringify(body, null, 2));
 
-  
-  const sender = req.body.payload?.source;
-  const message = req.body.payload?.payload?.text;
+  // Gupshup V2 payload structure
+  const payload = body.payload;
 
-  console.log(`Incoming message from ${sender} : ${message}`);
+  if (!payload || !payload.sender || !payload.payload) {
+    console.log("Invalid payload structure.");
+    return res.sendStatus(400);
+  }
 
- 
-  if (message && message.toLowerCase() === 'Hi') {
+  const phone = payload.sender.phone;
+  const text = payload.payload.text;
+
+  console.log("Incoming message from", phone, ":", text);
+
+  // Normalize message
+  const message = text?.trim().toLowerCase();
+
+  if (message === 'hi') {
     const msgParams = {
       channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: sender,
+      source: process.env.GUPSHUP_PHONE_NUMBER, // Your Gupshup virtual number
+      destination: phone,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'welcome_user',
       templateParams: '[]'
@@ -40,10 +45,7 @@ app.post('/gupshup', async (req, res) => {
       apikey: process.env.GUPSHUP_APP_TOKEN
     };
 
-    console.log("Sending message with params:");
-    console.log(msgParams);
-    console.log("Headers:");
-    console.log(headers);
+    console.log("Sending message with params:", msgParams);
 
     try {
       const response = await axios.post(
@@ -53,12 +55,15 @@ app.post('/gupshup', async (req, res) => {
       );
       console.log(`Message sent. Gupshup response: ${response.status}`);
     } catch (error) {
-      console.error(`Error sending message: ${error.response?.data || error.message}`);
+      console.error("Failed to send message:", error.response?.data || error.message);
     }
   }
 
   res.sendStatus(200);
 });
+
+
+  
 
 // Start server
 app.listen(PORT, () => {
