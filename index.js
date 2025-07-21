@@ -1,3 +1,6 @@
+
+
+
 const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
@@ -5,29 +8,23 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Gupshup Configuration from environment variables
 const GUPSHUP_API_KEY = process.env.GUPSHUP_API_KEY;
 const GUPSHUP_SOURCE = process.env.GUPSHUP_SOURCE;
 const GUPSHUP_APP_NAME = process.env.GUPSHUP_APP_NAME;
 
-// Root route
 app.get('/', (req, res) => {
     res.json({ message: 'ApnaScheme Bot is running 🚀' });
 });
 
-// Webhook endpoint for Gupshup
-app.post('/gupshup', async (req, res) => {
+app.post('/webhook', async (req, res) => {
     try {
         const payload = req.body;
         
-        // Log incoming webhook payload
         console.log('Received webhook payload:', JSON.stringify(payload, null, 2));
         
-        // Check if this is a message from Gupshup
         if (payload.type === 'message') {
             const messageData = payload.payload;
             const userNumber = messageData.source;
@@ -35,11 +32,9 @@ app.post('/gupshup', async (req, res) => {
             
             console.log(`Processing message from ${userNumber}: ${messageText}`);
             
-            // Check if user said "Hi"
             if (messageText.toLowerCase().trim() === 'hi') {
                 console.log('Detected "Hi" message, sending welcome template');
                 
-                // Send welcome template
                 const templateResponse = await sendTemplateMessage(userNumber, 'welcome_user');
                 
                 if (templateResponse.status === 'submitted') {
@@ -66,7 +61,6 @@ app.post('/gupshup', async (req, res) => {
     }
 });
 
-// Function to send template message using Gupshup API
 async function sendTemplateMessage(destination, templateName) {
     try {
         const url = 'https://api.gupshup.io/sm/api/v1/template/msg';
@@ -107,7 +101,6 @@ async function sendTemplateMessage(destination, templateName) {
     }
 }
 
-// Additional endpoint to test template sending
 app.post('/test-template', async (req, res) => {
     try {
         const { destination, template = 'welcome_user' } = req.body;
@@ -131,7 +124,6 @@ app.post('/test-template', async (req, res) => {
     }
 });
 
-// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'healthy', 
@@ -144,7 +136,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Unhandled error:', error.message);
     console.error('Stack trace:', error.stack);
@@ -155,7 +146,6 @@ app.use((error, req, res, next) => {
     });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({ 
         status: 'error', 
@@ -163,7 +153,6 @@ app.use('*', (req, res) => {
     });
 });
 
-// Start server
 app.listen(PORT, () => {
     console.log(`🚀 ApnaScheme Bot is running on port ${PORT}`);
     console.log(`Bot Name: ${GUPSHUP_APP_NAME}`);
@@ -176,7 +165,6 @@ app.listen(PORT, () => {
     console.log(`  GET  /health - Health check`);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n🛑 Shutting down ApnaScheme Bot...');
     process.exit(0);
