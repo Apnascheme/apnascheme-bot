@@ -8,91 +8,61 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Gupshup credentials
-const GUPSHUP_API_URL = 'https://api.gupshup.io/sm/api/v1/msg';
-const GUPSHUP_API_KEY = process.env.GUPSHUP_API_KEY;
-const BOT_PHONE = process.env.BOT_PHONE || '91xxxxxx'; // your WhatsApp bot phone
+// Test route
+app.get('/', (req, res) => {
+  res.send('ApnaScheme Bot is running ');
+});
 
-// When user says "hi", respond
+// Webhook endpoint
 app.post('/gupshup', async (req, res) => {
-  const incoming = req.body;
 
-  const message = incoming.message?.text?.toLowerCase();
-  const sender = incoming.sender?.phone;
+  console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 
-  if (!sender || !message) {
-    return res.sendStatus(200);
-  }
+  
+  const sender = req.body.payload?.source;
+  const message = req.body.payload?.payload?.text;
 
-  if (message === 'hi') {
+  console.log(Incoming message from ${sender} : ${message});
+
+ 
+  if (message && message.toLowerCase() === 'Hi') {
+    const msgParams = {
+      channel: 'whatsapp',
+      source: process.env.GUPSHUP_PHONE_NUMBER,
+      destination: sender,
+      'src.name': 'ApnaSchemeTechnologies',
+      template: 'language_selection_v1',
+      templateParams: '[]'
+    };
+
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      apikey: process.env.GUPSHUP_APP_TOKEN
+    };
+
+    console.log("Sending message with params:");
+    console.log(msgParams);
+    console.log("Headers:");
+    console.log(headers);
+
     try {
-      // First, try sending a template message
-      const templateResponse = await axios.post(GUPSHUP_API_URL, null, {
-        params: {
-          channel: 'whatsapp',
-          source: BOT_PHONE,
-          destination: sender,
-          "src.name": process.env.GUPSHUP_BOTNAME,
-          message: JSON.stringify({
-            type: 'template',
-            template: {
-              name: 'welcome_user', // your approved template
-              languageCode: 'en'
-            }
-          })
-        },
-        headers: {
-          'apikey': GUPSHUP_API_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
-
-      // If template is sent successfully, done
-      if (templateResponse.data.status === 'submitted') {
-        console.log('Template sent');
-        return res.sendStatus(200);
-      } else {
-        // If template failed, fallback to normal text
-        console.warn('Template failed, falling back to normal text');
-        await sendTextFallback(sender, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.");
-        return res.sendStatus(200);
-      }
+      const response = await axios.post(
+        'https://api.gupshup.io/sm/api/v1/msg',
+        new URLSearchParams(msgParams).toString(),
+        { headers }
+      );
+      console.log(Message sent. Gupshup response: ${response.status});
     } catch (error) {
-      console.error('Template error, sending fallback:', error.message);
-      await sendTextFallback(sender, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.");
-      return res.sendStatus(200);
+      console.error(Error sending message: ${error.response?.data || error.message});
     }
   }
 
   res.sendStatus(200);
 });
 
-// Fallback: send normal text
-async function sendTextFallback(to, text) {
-  try {
-    await axios.post(GUPSHUP_API_URL, null, {
-      params: {
-        channel: 'whatsapp',
-        source: BOT_PHONE,
-        destination: to,
-        message: text,
-        "src.name": process.env.GUPSHUP_BOTNAME
-      },
-      headers: {
-        apikey: GUPSHUP_API_KEY,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    console.log('Fallback text sent to', to);
-  } catch (err) {
-    console.error('Fallback failed:', err.message);
-  }
-}
-
-app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is live 🚀');
-});
-
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(` ApnaScheme bot server started on port ${PORT}`);
+  console.log("Available at your primary URL https://apnascheme-bot.onrender.com");
+  console.log('///////////////////////////////////////////////////////////\n');
 });
