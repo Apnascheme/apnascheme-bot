@@ -31,7 +31,7 @@ app.post('/gupshup', async (req, res) => {
       source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
-      template: 'language_selection_v1',
+      template: 'welcome_user',
       templateParams: '[]'
     };
 
