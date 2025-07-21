@@ -7,67 +7,60 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Test route
+// Health check
 app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running ');
+  res.send('ApnaScheme Bot is running 🚀');
 });
 
-// Webhook endpoint
-app.post('/gupshup', async (req, res) => {
-  console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
+// Webhook endpoint for Gupshup incoming messages
+app.post('/', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('Full incoming payload:', JSON.stringify(data, null, 2));
 
-  const sender = req.body.payload?.source;
-  const message = req.body.payload?.payload?.text;
+    const userMessage = data.payload?.payload?.text?.toLowerCase();
+    const userPhone = data.payload?.sender?.phone;
 
-  console.log(`Incoming message from ${sender} : ${message}`);
-
-  if (message && message.toLowerCase() === 'Hi') {
-    const msgParams = {
-      channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: sender,
-      'src.name': 'ApnaSchemeTechnologies',
-      template: 'welcome_user',
-      templateParams: JSON.stringify([])
-    };
-
-    const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      apikey: process.env.GUPSHUP_APP_TOKEN
-    };
-
-    console.log("Sending message with params:");
-    console.log(msgParams);
-    console.log("Headers:");
-    console.log(headers);
-
-    try {
-      const response = await axios.post(
-        'https://api.gupshup.io/sm/api/v1/msg',
-        new URLSearchParams(msgParams).toString(),
-        { headers }
-      );
-
-      console.log(` Message sent successfully.`);
-      console.log(` Gupshup response status: ${response.status}`);
-      console.log(`Gupshup response data:, response.data`);
-    } catch (error) {
-      console.error(` Error sending message:`);
-      if (error.response) {
-        console.error(`Status: ${error.response.status}`);
-        console.error(`Data:, error.response.data`);
-      } else {
-        console.error(error.message);
-      }
+    if (!userMessage || !userPhone) {
+      return res.sendStatus(400);
     }
+
+    console.log(`Incoming message from ${userPhone}: ${userMessage}`);
+
+    // Trigger only on "hi", "hello", "start"
+    if (['hi', 'hello', 'start'].includes(userMessage)) {
+      const welcomeMessage = {
+        type: 'text',
+        text: `Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:\n🔘 हिंदी 🔘 English 🔘 मराठी`
+      };
+
+      const payload = new URLSearchParams();
+      payload.append('channel', 'whatsapp');
+      payload.append('source', process.env.GUPSHUP_SOURCE_PHONE); // your registered number
+      payload.append('destination', userPhone);
+      payload.append('src.name', 'ApnaSchemeTechnologies');
+      payload.append('message', JSON.stringify(welcomeMessage));
+
+      await axios.post('https://api.gupshup.io/sm/api/v1/msg', payload.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'apiKey': process.env.GUPSHUP_API_KEY
+        }
+      });
+
+      console.log(`Reply sent to ${userPhone}`);
+    }
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error handling webhook:', error);
+    res.sendStatus(500);
   }
-  res.sendStatus(200);
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(` ApnaScheme bot server started on port ${PORT}`);
-  console.log("Available at your primary URL https://apnascheme-bot.onrender.com");
-  console.log('///////////////////////////////////////////////////////////\n');
+  console.log(`ApnaScheme bot backend live on port ${PORT}`);
 });
