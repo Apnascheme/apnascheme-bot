@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 
-app.post('/webhook', async (req, res) => {
+app.post('/gupshup', async (req, res) => {
   const body = req.body;
 
   console.log("Full incoming payload:", JSON.stringify(body, null, 2));
@@ -30,14 +30,14 @@ app.post('/webhook', async (req, res) => {
   // Normalize message
   const message = text?.trim().toLowerCase();
 
-  if (message === 'hi') {
+  if (message && message.toLowerCase() === 'hi') {
     const msgParams = {
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER, // Your Gupshup virtual number
-      destination: phone,
+      destination: sender || phone,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'welcome_user',
-      templateParams: '[]'
+      templateParams: JSON.stringify([])
     };
 
     const headers = {
