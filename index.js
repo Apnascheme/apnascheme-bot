@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 
 dotenv.config();
+console.log("GUPSHUP_PHONE_NUMBER:", process.env.GUPSHUP_PHONE_NUMBER);
+console.log("GUPSHUP_APP_TOKEN:", process.env.GUPSHUP_APP_TOKEN ? "Loaded" : "Not loaded");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
