@@ -1,5 +1,4 @@
 
-
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
@@ -86,8 +85,8 @@ app.post('/gupshup', async (req, res) => {
       
       // Extract message text
       let messageText = '';
-      if (messagePayload.type === 'text') {
-        messageText = messagePayload.text;
+      if (messagePayload && messagePayload.type === 'text' && messagePayload.payload) {
+        messageText = messagePayload.payload.text;
       }
       
       console.log(`Message from ${source}: ${messageText}`);
