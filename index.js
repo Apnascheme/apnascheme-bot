@@ -72,7 +72,7 @@ async function sendTemplateMessage(phoneNumber, templateName) {
 }
 
 // Webhook endpoint to receive messages from Gupshup
-app.post('/webhook', async (req, res) => {
+app.post('/gupshup', async (req, res) => {
   try {
     console.log('Webhook received:', JSON.stringify(req.body, null, 2));
     
