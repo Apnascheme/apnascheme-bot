@@ -25,7 +25,7 @@ app.post('/', async (req, res) => {
           source: process.env.GUPSHUP_PHONE, 
           destination: userPhone,
           message: replyText,
-          src.name: process.env.GUPSHUP_BOTNAME 
+          'src.name': process.env.GUPSHUP_BOTNAME
         },
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
