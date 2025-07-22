@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.use(express.json());
+
 
 initializeApp({
   credential: applicationDefault(),
@@ -152,7 +152,7 @@ app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
 
-    const rawBody = req.body.toString('utf8');
+   const rawBody = req.body.toString(); 
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(rawBody)
@@ -206,7 +206,7 @@ async function sendGupshupMessage(to, message) {
     console.error('Gupshup Send Error:', err.response?.data || err.message);
   }
 }
-
+app.use(express.json());
 app.listen(PORT, () => {
   console.log(`ApnaScheme bot server started on port ${PORT}`);
   console.log(`     ==> Your service is live 🎉`);
