@@ -17,7 +17,7 @@ initializeApp({
 const db = getFirestore();
 
 const userStates = {};
-const referralNumber = '9321875559';
+const referralNumber = '7977594397';
 
 app.get('/', (req, res) => {
   res.send('ApnaScheme Bot is running 🚀');
