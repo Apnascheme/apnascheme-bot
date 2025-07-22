@@ -2,8 +2,17 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import crypto from 'crypto';
+import admin from 'firebase-admin';
+import serviceAccount from './firebase-service-account.json'; // replace with your actual path
 
 dotenv.config();
+
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -301,6 +310,17 @@ app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`ApnaScheme bot server started on port ${PORT}`);
+  
+  // 🔥 Test Firestore write
+  try {
+    await db.collection('test').doc('sample').set({
+      hello: 'world',
+      timestamp: Date.now()
+    });
+    console.log('✅ Test Firestore write successful');
+  } catch (err) {
+    console.error('❌ Firestore write failed:', err);
+  }
 });
