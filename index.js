@@ -50,7 +50,7 @@ app.get('/', (req, res) => {
   res.send('ApnaScheme Bot is running 🚀');
 });
 
-app.post('/gupshup-webhook', async (req, res) => {
+app.post('/gupshup', async (req, res) => {
   const body = req.body;
   const sender = body.payload?.sender?.phone;
   const message = body.payload?.payload?.text?.toLowerCase();
