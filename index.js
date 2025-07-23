@@ -21,7 +21,7 @@ const userStates = {};
 const referralNumber = '7977594397';
 
 // Load Excel data once on server start
-const workbook = xlsx.readFile('./ApnaScheme_Phase1_50_Scheme_Template.csv.xlsx');
+const workbook = xlsx.readFile('./ApnaScheme_Phase1_50_Scheme_Template.xlsx');
 const sheet = workbook.Sheets[workbook.SheetNames[0]];
 const schemes = xlsx.utils.sheet_to_json(sheet);
 
