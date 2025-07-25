@@ -16,13 +16,14 @@ app.get('/', (req, res) => {
 // Webhook endpoint
 app.post('/gupshup', async (req, res) => {
 
-  console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 
   
+const sender = req.body?.payload?.source;
+const message = req.body?.payload?.payload?.text;
+
+console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 console.log(`Incoming message from ${sender} : ${message}`);
 
-
-  console.log('Incoming message from ${sender} : ${message}');
 
  
   if (message && message.toLowerCase() === 'Hi') {
