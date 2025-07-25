@@ -184,13 +184,13 @@ async function sendGupshupMessage(to, message) {
   try {
     await axios.post('https://api.gupshup.io/sm/api/v1/msg', {
       channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_ID,
+      source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: to,
       message,
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'apikey': process.env.GUPSHUP_API_KEY,
+        'apikey': process.env.GUPSHUP_APP_TOKEN,
       },
     });
   } catch (err) {
