@@ -32,7 +32,7 @@ console.log(`Incoming message from ${sender} : ${message}`);
       source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
-      template: 'language_selection_v1',
+      template: 'welcome_user',
       templateParams: '[]'
     };
 
