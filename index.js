@@ -182,24 +182,58 @@ function resetUser(phone) {
 
 async function sendGupshupMessage(to, message) {
   try {
-    await axios.post('https://api.gupshup.io/sm/api/v1/msg', {
-      channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: to,
-      message,
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': process.env.GUPSHUP_APP_TOKEN,
-      },
+    // Use sandbox mode by default
+    const isSandbox = true; // Set to false for production
+    const source = isSandbox ? '14157386170' : process.env.GUPSHUP_PHONE_NUMBER;
+    
+    const payload = new URLSearchParams();
+    payload.append('channel', 'whatsapp');
+    payload.append('source', source);
+    payload.append('destination', to);
+    payload.append('message', JSON.stringify({
+      ...message,
+      text: isSandbox ? `[SANDBOX] ${message.text}` : message.text
+    }));
+    
+    if (process.env.GUPSHUP_BOTNAME) {
+      payload.append('src.name', process.env.GUPSHUP_BOTNAME);
+    }
+
+    const response = await axios.post(
+      'https://api.gupshup.io/sm/api/v1/msg',
+      payload.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'apikey': process.env.GUPSHUP_APP_TOKEN
+        }
+      }
+    );
+    
+    console.log('Message sent:', {
+      status: response.status,
+      data: response.data,
+      to,
+      message: message.text
     });
   } catch (err) {
-    console.error('Gupshup Send Error:', err.response?.data || err.message);
+    console.error('Gupshup API Error:', {
+      error: err.message,
+      response: err.response?.data,
+      config: {
+        url: err.config?.url,
+        data: err.config?.data,
+        headers: {
+          ...err.config?.headers,
+          apikey: '[REDACTED]' // Hide full API key in logs
+        }
+      }
+    });
   }
 }
 
 app.listen(PORT, () => {
   console.log(`ApnaScheme bot server started on port ${PORT}`);
-  console.log(`     ==> Your service is live 🎉`);
-  console.log(`     ==> \n     ==> Available at your primary URL https://apnascheme-bot.onrender.com\n`);
+  console.log(`     ==> Running in SANDBOX mode`);
+  console.log(`     ==> Available at your primary URL https://apnascheme-bot.onrender.com\n`);
 });
