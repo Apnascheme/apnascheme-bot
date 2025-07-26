@@ -34,9 +34,10 @@ app.post('/gupshup', async (req, res) => {
       'src.name': 'ApnaSchemeTechnologies',
       message: JSON.stringify({
         type: 'text',
-text: "Namaste! I'm ApnaScheme – your digital guide for Government Schemes.\n\n" +
-      "I help you find which Sarkari Yojanas you're eligible for – no agents, no forms, no confusion.\n\n" +
-      "Please choose your language:\n1. Hindi\n2. English\n3. Marathi"
+text: "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳.\n\n" +
+      "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.
+.\n\n" +
+      "Apni bhaasha chunein:\n1.  हिंदी\n2. English\n3. मराठी"
 
       })
     });
