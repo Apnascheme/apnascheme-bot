@@ -2,146 +2,129 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 
-
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 10000;
-
 app.use(express.json());
 
+const PORT = process.env.PORT || 3000;
+const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
+const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
+const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 
-const LANGUAGE_QUESTIONS = {
-  HI: {
-    welcome: `Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳
-Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –
-bina agent, bina form, bina confusion.
+const userContext = {}; // Temporary in-memory store
 
-🗣️ Apni bhaasha chunein:
-🔘 हिंदी 🔘 English 🔘 मराठी`,
-    questions: [
-      { key: 'gender', text: 'Aapka gender kya hai? (👨‍🦰 Purush, 👩 Mahila, 🧕 Anya)' },
-      { key: 'age', text: 'Aapki age kitni hai? (Numeric mein likhein eg. 18)' },
-      { key: 'state', text: 'Aapka rajya kaunsa hai? (e.g. Maharashtra)' },
-      { key: 'caste', text: 'Aap SC/ST/OBC/EWS category mein aate ho kya? (Haan/Nahi)' },
-      { key: 'occupation', text: 'Aapka current occupation kya hai? (Student, Employed, Unemployed...)' },
-      { key: 'income', text: 'Aapka ghar ka saalana aay kya hai? (₹ mein likho)' },
-      { key: 'guardian_income', text: 'Aapke guardian ka annual income kitna hai? (₹ mein likho)' },
-      { key: 'bank', text: 'Kya aapka bank account khula hai? (Haan/Nahi)' },
-      { key: 'ration', text: 'Kya aapke paas ration card hai? (Haan/Nahi)' },
-    ],
-  },
-  EN: {
-    welcome: `Hello! I am ApnaScheme – your digital guide 🇮🇳
-I’ll help you find which Government Schemes you’re eligible for –
-no agents, no forms, no confusion.
+const QUESTIONS = {
+  HI: [
+    "Aapka gender kya hai? (Male/Female/Other)",
+    "Aapki age kitni hai? (Numeric mein likhein eg. 18)",
+    "Aap kya karte ho? (Student/Unemployed/Employed)",
+    "Agar aap Student ya Unemployed hain, to aapke guardian ki saalana income kitni hai? (eg. 120000)",
+    "Kya aapke paas bank account hai? (Yes/No)",
+    "Kya aapke paas ration card hai? (Yes/No)",
+    "Kya aap kisi existing Sarkari Yojana ka labh le rahe ho? (Yes/No)",
+    "Aapka rajya kaunsa hai? (eg. Maharashtra)",
+    "Aap SC/ST/OBC/EWS category mein aate ho kya? (Yes/No)"
+  ],
+  EN: [
+    "What is your gender? (Male/Female/Other)",
+    "What is your age? (Enter number eg. 18)",
+    "What do you do? (Student/Unemployed/Employed)",
+    "If Student or Unemployed, what is your guardian’s yearly income? (eg. 120000)",
+    "Do you have a bank account? (Yes/No)",
+    "Do you have a ration card? (Yes/No)",
+    "Are you currently availing any government scheme? (Yes/No)",
+    "Which state do you live in? (eg. Maharashtra)",
+    "Do you belong to SC/ST/OBC/EWS category? (Yes/No)"
+  ],
+  MR: [
+    "तुमचं लिंग काय आहे? (Male/Female/Other)",
+    "तुमचं वय किती आहे? (उदाहरण: 18)",
+    "तुम्ही काय करता? (विद्यार्थी/बेरोजगार/नोकरी करता)",
+    "जर तुम्ही विद्यार्थी किंवा बेरोजगार असाल, तर पालकांचे वार्षिक उत्पन्न किती आहे? (उदा: 120000)",
+    "तुमचं बँक खाते आहे का? (होय/नाही)",
+    "तुमच्याकडे रेशन कार्ड आहे का? (होय/नाही)",
+    "तुम्ही कोणत्याही सरकारी योजनेचा लाभ घेत आहात का? (होय/नाही)",
+    "तुमचं राज्य कोणतं? (उदा: महाराष्ट्र)",
+    "तुम्ही SC/ST/OBC/EWS प्रवर्गात मोडता का? (होय/नाही)"
+  ]
+};
 
-🗣️ Choose your language:
-🔘 हिंदी 🔘 English 🔘 मराठी`,
-    questions: [
-      { key: 'gender', text: 'What is your gender? (Male/Female/Other)' },
-      { key: 'age', text: 'What is your age? (e.g. 25)' },
-      { key: 'state', text: 'Which state do you live in? (e.g. Maharashtra)' },
-      { key: 'caste', text: 'Do you belong to SC/ST/OBC/EWS category? (Yes/No)' },
-      { key: 'occupation', text: 'What is your current occupation? (Student, Employed, Unemployed...)' },
-      { key: 'income', text: 'What is your annual household income? (in ₹)' },
-      { key: 'guardian_income', text: 'What is your guardian’s annual income? (in ₹)' },
-      { key: 'bank', text: 'Do you have a bank account? (Yes/No)' },
-      { key: 'ration', text: 'Do you have a ration card? (Yes/No)' },
-    ],
-  },
-  MR: {
-    welcome: `नमस्कार! मी आहे ApnaScheme – तुमचा डिजिटल साथी 🇮🇳
-मी तुम्हाला सांगेल की कोणती शासकीय योजना तुमच्यासाठी आहे –
-नो एजंट, नो फॉर्म, नो गोंधळ.
+const sendMessage = async (phone, msg) => {
+  await axios.post(BASE_URL, null, {
+    params: {
+      channel: 'whatsapp',
+      source: GUPSHUP_PHONE_NUMBER,
+      destination: phone,
+      message: msg,
+      src.name: 'ApnaSchemeTechnologies'
+    },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      apikey: GUPSHUP_APP_TOKEN
+    }
+  });
+};
 
-🗣️ आपली भाषा निवडा:
-🔘 हिंदी 🔘 English 🔘 मराठी`,
-    questions: [
-      { key: 'gender', text: 'तुमचे लिंग काय आहे? (पुरुष/स्त्री/इतर)' },
-      { key: 'age', text: 'तुमचे वय किती आहे? (उदा. २५)' },
-      { key: 'state', text: 'तुम्ही कोणत्या राज्यात राहता? (उदा. महाराष्ट्र)' },
-      { key: 'caste', text: 'तुम्ही SC/ST/OBC/EWS मधून आहात का? (होय/नाही)' },
-      { key: 'occupation', text: 'तुमचा व्यवसाय काय आहे? (विद्यार्थी, नोकरी, बेरोजगार...)' },
-      { key: 'income', text: 'तुमचे वार्षिक उत्पन्न किती आहे? (₹ मध्ये)' },
-      { key: 'guardian_income', text: 'तुमच्या पालकांचे वार्षिक उत्पन्न किती आहे? (₹ मध्ये)' },
-      { key: 'bank', text: 'तुमचे बँक खाते आहे का? (होय/नाही)' },
-      { key: 'ration', text: 'तुमच्याकडे रेशन कार्ड आहे का? (होय/नाही)' },
-    ],
-  },
+const getNextQuestion = (user) => {
+  const lang = user.language;
+  const q = QUESTIONS[lang];
+  const res = user.responses;
+
+  if (res.length === 0) return q[0]; // Gender
+  if (res.length === 1) return q[1]; // Age
+  if (res.length === 2) return q[2]; // Occupation
+
+  const occupation = res[2]?.toLowerCase();
+  if ((occupation === 'student' || occupation === 'unemployed' || occupation === 'विद्यार्थी' || occupation === 'बेरोजगार') && res.length === 3) {
+    return q[3]; // Guardian income
+  }
+
+  if (res.length === 3 && occupation === 'employed') return q[4]; // Bank account
+  if (res.length === 4 && (occupation === 'student' || occupation === 'unemployed')) return q[4]; // Bank account after guardian income
+  if (res.length === 5) return q[5]; // Ration card
+  if (res.length === 6) return q[6]; // Existing yojana
+  if (res.length === 7) return q[7]; // State
+  if (res.length === 8) return q[8]; // Caste
+  return null;
 };
 
 app.post('/gupshup', async (req, res) => {
-  const incoming = req.body.payload?.payload;
-  const phone = incoming?.sender?.phone;
-  const message = incoming?.payload?.text?.toLowerCase().trim();
-  if (!phone || !message) return res.sendStatus(200);
+  const data = req.body?.payload;
+  const phone = data?.sender?.phone;
+  const msg = data?.payload?.text?.toLowerCase().trim();
 
-  const userRef = db.collection('users').doc(phone);
-  let userData = (await userRef.get()).data() || {};
-
-  // Set language
-  if (!userData.language) {
-    if (message.includes('hindi') || message.includes('हिंदी')) userData.language = 'HI';
-    else if (message.includes('english') || message.includes('eng')) userData.language = 'EN';
-    else if (message.includes('marathi') || message.includes('मराठी')) userData.language = 'MR';
+  if (!userContext[phone]) {
+    if (msg.includes('hindi') || msg.includes('हिंदी')) userContext[phone] = { language: 'HI', responses: [] };
+    else if (msg.includes('english')) userContext[phone] = { language: 'EN', responses: [] };
+    else if (msg.includes('marathi') || msg.includes('मराठी')) userContext[phone] = { language: 'MR', responses: [] };
     else {
-      await sendMessage(phone, LANGUAGE_QUESTIONS.HI.welcome);
+      await sendMessage(phone, "🗣️ Apni bhaasha chunein:\n🔘 हिंदी 🔘 English 🔘 मराठी");
       return res.sendStatus(200);
     }
-    userData.answers = {};
-    userData.step = 0;
-    await userRef.set(userData);
+
+    const firstQuestion = getNextQuestion(userContext[phone]);
+    await sendMessage(phone, firstQuestion);
+    return res.sendStatus(200);
   }
 
-  const lang = userData.language;
-  const questions = LANGUAGE_QUESTIONS[lang].questions;
+  const user = userContext[phone];
+  user.responses.push(msg);
 
-  // Store answer to last step
-  if (userData.step > 0) {
-    const lastKey = questions[userData.step - 1].key;
-    userData.answers[lastKey] = message;
-  }
-
-  // Skip logic
-  if (questions[userData.step]?.key === 'income' && ['student', 'unemployed', 'विद्यार्थी', 'बेरोजगार'].includes(userData.answers['occupation']?.toLowerCase())) {
-    userData.step++; // skip income
-  }
-  if (questions[userData.step]?.key === 'bank' && parseInt(userData.answers['age']) < 18) {
-    userData.step++; // skip bank
-  }
-
-  // Ask next question
-  if (userData.step < questions.length) {
-    const nextQ = questions[userData.step].text;
-    await sendMessage(phone, nextQ);
-    userData.step++;
-    await userRef.set(userData);
+  const next = getNextQuestion(user);
+  if (next) {
+    await sendMessage(phone, next);
   } else {
-    await sendMessage(phone, '✅ Thank you! We are checking schemes you are eligible for...');
-    // You can add further logic here for eligibility check/payment etc.
+    await sendMessage(phone, "Shukriya! Aapki saari jankari mil gayi hai. Ab hum aapke liye Yojana check karenge.");
+    delete userContext[phone]; // Reset after flow
   }
 
   res.sendStatus(200);
 });
 
-async function sendMessage(to, msg) {
-  await axios.post(
-    'https://api.gupshup.io/sm/api/v1/msg',
-    new URLSearchParams({
-      channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: to,
-      message: JSON.stringify({ type: 'text', text: msg }),
-    }),
-    {
-      headers: {
-        'apikey': process.env.GUPSHUP_APP_TOKEN,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }
-  );
-}
+app.get('/', (req, res) => {
+  res.send('✅ ApnaScheme Bot is running with 3-language flow.');
+});
 
 app.listen(PORT, () => {
-  console.log(`✅ ApnaScheme bot server running on port ${PORT}`);
+  console.log(`🚀 Server live on port ${PORT}`);
 });
