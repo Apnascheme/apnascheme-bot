@@ -26,42 +26,52 @@ app.post('/gupshup', async (req, res) => {
   const message = payload.payload.text.toLowerCase();
 
   if (message === 'hi') {
-    // Prepare WhatsApp template message for Gupshup API
-    const params = new URLSearchParams({
-      channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: sender,
-      'src.name': 'ApnaSchemeTechnologies',
-      message: JSON.stringify({
-        type: 'template',
-        template: {
-          name: 'welcome_user',
-          languageCode: 'en'
-          // No need to send components unless your template has variables/buttons as variables
-        }
-      })
-    });
-
     try {
-      await axios.post(
+      // Prepare template message according to Gupshup's API spec
+      const response = await axios.post(
         'https://api.gupshup.io/wa/api/v1/template/msg',
-        params,
+        new URLSearchParams({
+          channel: 'whatsapp',
+          source: process.env.GUPSHUP_PHONE_NUMBER,
+          destination: sender,
+          'src.name': 'ApnaSchemeTechnologies',
+          template: JSON.stringify({
+            id: 'welcome_user', // Use 'id' instead of 'name'
+
+          }),
+          // Optional: Add postback texts for quick reply buttons
+          postbackTexts: JSON.stringify([
+            {
+              index: 0, // Button index (0-based)
+              text: "language_selected" // Postback text
+            }
+          ])
+        }),
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            apikey: process.env.GUPSHUP_APP_TOKEN
+            'apikey': process.env.GUPSHUP_APP_TOKEN
           }
         }
       );
-      } catch (error) {
-      console.error("❌ Error sending message:", error.response?.data || error.message);
+
+      console.log("✅ Template message sent:", response.data);
+    } catch (error) {
+      console.error("❌ Error sending template:", {
+        status: error.response?.status,
+        error: error.response?.data || error.message,
+        config: {
+          url: error.config?.url,
+          data: error.config?.data
+        }
+      });
     }
   }
 
-  // Always reply 200 OK to Gupshup webhook
   res.sendStatus(200);
 });
 
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
+  console.log(`Using Gupshup API endpoint: https://api.gupshup.io/wa/api/v1/template/msg`);
 });
