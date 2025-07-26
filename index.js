@@ -14,7 +14,7 @@ const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 const userContext = {}; // Temporary in-memory store
 
 const QUESTIONS = {
-  HI: [
+  1: [
     "Aapka gender kya hai? (Male/Female/Other)",
     "Aapki age kitni hai? (Numeric mein likhein eg. 18)",
     "Aap kya karte ho? (Student/Unemployed/Employed)",
@@ -25,7 +25,7 @@ const QUESTIONS = {
     "Aapka rajya kaunsa hai? (eg. Maharashtra)",
     "Aap SC/ST/OBC/EWS category mein aate ho kya? (Yes/No)"
   ],
-  EN: [
+  2: [
     "What is your gender? (Male/Female/Other)",
     "What is your age? (Enter number eg. 18)",
     "What do you do? (Student/Unemployed/Employed)",
@@ -35,7 +35,7 @@ const QUESTIONS = {
     "Which state do you live in? (eg. Maharashtra)",
     "Do you belong to SC/ST/OBC/EWS category? (Yes/No)"
   ],
-  MR: [
+  3: [
     "तुमचं लिंग काय आहे? (Male/Female/Other)",
     "तुमचं वय किती आहे? (उदाहरण: 18)",
     "तुम्ही काय करता? (विद्यार्थी/बेरोजगार/नोकरी करता)",
@@ -92,9 +92,9 @@ app.post('/gupshup', async (req, res) => {
   const msg = data?.payload?.text?.toLowerCase().trim();
 
   if (!userContext[phone]) {
-    if (msg.includes('hindi') || msg.includes('हिंदी')) userContext[phone] = { language: 'HI', responses: [] };
-    else if (msg.includes('english')) userContext[phone] = { language: 'EN', responses: [] };
-    else if (msg.includes('marathi') || msg.includes('मराठी')) userContext[phone] = { language: 'MR', responses: [] };
+    if (msg.includes('hindi') || msg.includes('हिंदी')) userContext[phone] = { language: '1', responses: [] };
+    else if (msg.includes('english')) userContext[phone] = { language: '2', responses: [] };
+    else if (msg.includes('marathi') || msg.includes('मराठी')) userContext[phone] = { language: '3', responses: [] };
     else {
       await sendMessage(phone,"Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:(1 ,2 ,3)\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
