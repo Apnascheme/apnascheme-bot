@@ -72,17 +72,21 @@ const getNextQuestion = (user) => {
   if (res.length === 2) return q[2]; // Occupation
 
   const occupation = res[2]?.toLowerCase();
-  if ((occupation === 'student' || occupation === 'unemployed' || occupation === 'विद्यार्थी' || occupation === 'बेरोजगार') && res.length === 3) {
-    return q[3]; // Guardian income
-  }
 
-  if (res.length === 3 && occupation === 'employed') return q[4]; // Bank account
-  if (res.length === 4 && (occupation === 'student' || occupation === 'unemployed')) return q[4]; // Bank account after guardian income
-  if (res.length === 5) return q[5]; // Ration card
-  if (res.length === 6) return q[6]; // Existing yojana
-  if (res.length === 7) return q[7]; // State
-  if (res.length === 8) return q[8]; // Caste
-  return null;
+if ((occupation === 'student' || occupation === 'unemployed' || occupation === 'विद्यार्थी' || occupation === 'बेरोजगार') && res.length === 3) {
+  return q[3]; // Guardian income
+}
+
+if (res.length === 3 && occupation === 'employed') return q[4]; // Bank account for employed
+
+if (res.length === 4 && (occupation === 'student' || occupation === 'unemployed' || occupation === 'विद्यार्थी' || occupation === 'बेरोजगार')) return q[4]; // Bank account after guardian income
+
+if (res.length === 5) return q[5]; // Ration card
+if (res.length === 6) return q[6]; // State
+if (res.length === 7) return q[7]; // Caste
+
+return null; // End
+
 };
 
 app.post('/gupshup', async (req, res) => {
