@@ -115,8 +115,18 @@ app.post('/gupshup', async (req, res) => {
   if (next) {
     await sendMessage(phone, next);
   } else {
-    await sendMessage(phone, "Aapke diye gaye jawaabon ke hisaab se:/nAap Sarkari Yojana ke liye eligible:/nIn Yojanon ke naam, full details chahiye?/nYeh poori madad sirf ₹49 mein milegi.
-");
+   let closingMessage = "";
+
+if (user.language === '1') {
+  closingMessage = `🎉 धन्यवाद! आपकी सारी जानकारी मिल गई है।\n\nअब Apna ₹49 Yojana Assist प्लान सक्रिय करने के लिए यहां भरें:\n👉 https://rzp.io/rzp/razorpay49\n\nआपका भुगतान सुरक्षित है।\n\nपूरी योजना सूची तुरंत WhatsApp पर भेजी जाएगी।`;
+} else if (user.language === '2') {
+  closingMessage = `🎉 Thank you! We've received all your details.\n\nTo activate Apna ₹49 Yojana Assist plan, fill this:\n👉 https://rzp.io/rzp/razorpay49\n\nYour payment is secure.\n\nFull scheme list will be sent immediately on WhatsApp.`;
+} else if (user.language === '3') {
+  closingMessage = `🎉 धन्यवाद! तुमची सर्व माहिती मिळाली आहे.\n\nApna ₹49 Yojana Assist योजना सक्रिय करण्यासाठी येथे फॉर्म भरा:\n👉 https://rzp.io/rzp/razorpay49\n\nतुमचं पेमेंट सुरक्षित आहे.\n\nसंपूर्ण योजना यादी लगेच WhatsApp वर पाठवली जाईल.`;
+}
+
+await sendMessage(phone, closingMessage);
+
     delete userContext[phone]; // Reset after flow
   }
 
