@@ -2,166 +2,146 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 
+
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-const userState = new Map();
 
-async function sendGupshupMessage(destination, text) {
-  const params = new URLSearchParams({
-    channel: 'whatsapp',
-    source: process.env.GUPSHUP_PHONE_NUMBER,
-    destination: destination,
-    'src.name': 'ApnaSchemeTechnologies',
-    message: JSON.stringify({ type: 'text', text: text })
-  });
+const LANGUAGE_QUESTIONS = {
+  HI: {
+    welcome: `Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳
+Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –
+bina agent, bina form, bina confusion.
 
-  try {
-    await axios.post(
-      'https://api.gupshup.io/sm/api/v1/msg',
-      params,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          apikey: process.env.GUPSHUP_APP_TOKEN
-        }
-      }
-    );
-  } catch (error) {
-    console.error("❌ Error sending message:", error.response?.data || error.message);
-  }
-}
+🗣️ Apni bhaasha chunein:
+🔘 हिंदी 🔘 English 🔘 मराठी`,
+    questions: [
+      { key: 'gender', text: 'Aapka gender kya hai? (👨‍🦰 Purush, 👩 Mahila, 🧕 Anya)' },
+      { key: 'age', text: 'Aapki age kitni hai? (Numeric mein likhein eg. 18)' },
+      { key: 'state', text: 'Aapka rajya kaunsa hai? (e.g. Maharashtra)' },
+      { key: 'caste', text: 'Aap SC/ST/OBC/EWS category mein aate ho kya? (Haan/Nahi)' },
+      { key: 'occupation', text: 'Aapka current occupation kya hai? (Student, Employed, Unemployed...)' },
+      { key: 'income', text: 'Aapka ghar ka saalana aay kya hai? (₹ mein likho)' },
+      { key: 'guardian_income', text: 'Aapke guardian ka annual income kitna hai? (₹ mein likho)' },
+      { key: 'bank', text: 'Kya aapka bank account khula hai? (Haan/Nahi)' },
+      { key: 'ration', text: 'Kya aapke paas ration card hai? (Haan/Nahi)' },
+    ],
+  },
+  EN: {
+    welcome: `Hello! I am ApnaScheme – your digital guide 🇮🇳
+I’ll help you find which Government Schemes you’re eligible for –
+no agents, no forms, no confusion.
+
+🗣️ Choose your language:
+🔘 हिंदी 🔘 English 🔘 मराठी`,
+    questions: [
+      { key: 'gender', text: 'What is your gender? (Male/Female/Other)' },
+      { key: 'age', text: 'What is your age? (e.g. 25)' },
+      { key: 'state', text: 'Which state do you live in? (e.g. Maharashtra)' },
+      { key: 'caste', text: 'Do you belong to SC/ST/OBC/EWS category? (Yes/No)' },
+      { key: 'occupation', text: 'What is your current occupation? (Student, Employed, Unemployed...)' },
+      { key: 'income', text: 'What is your annual household income? (in ₹)' },
+      { key: 'guardian_income', text: 'What is your guardian’s annual income? (in ₹)' },
+      { key: 'bank', text: 'Do you have a bank account? (Yes/No)' },
+      { key: 'ration', text: 'Do you have a ration card? (Yes/No)' },
+    ],
+  },
+  MR: {
+    welcome: `नमस्कार! मी आहे ApnaScheme – तुमचा डिजिटल साथी 🇮🇳
+मी तुम्हाला सांगेल की कोणती शासकीय योजना तुमच्यासाठी आहे –
+नो एजंट, नो फॉर्म, नो गोंधळ.
+
+🗣️ आपली भाषा निवडा:
+🔘 हिंदी 🔘 English 🔘 मराठी`,
+    questions: [
+      { key: 'gender', text: 'तुमचे लिंग काय आहे? (पुरुष/स्त्री/इतर)' },
+      { key: 'age', text: 'तुमचे वय किती आहे? (उदा. २५)' },
+      { key: 'state', text: 'तुम्ही कोणत्या राज्यात राहता? (उदा. महाराष्ट्र)' },
+      { key: 'caste', text: 'तुम्ही SC/ST/OBC/EWS मधून आहात का? (होय/नाही)' },
+      { key: 'occupation', text: 'तुमचा व्यवसाय काय आहे? (विद्यार्थी, नोकरी, बेरोजगार...)' },
+      { key: 'income', text: 'तुमचे वार्षिक उत्पन्न किती आहे? (₹ मध्ये)' },
+      { key: 'guardian_income', text: 'तुमच्या पालकांचे वार्षिक उत्पन्न किती आहे? (₹ मध्ये)' },
+      { key: 'bank', text: 'तुमचे बँक खाते आहे का? (होय/नाही)' },
+      { key: 'ration', text: 'तुमच्याकडे रेशन कार्ड आहे का? (होय/नाही)' },
+    ],
+  },
+};
 
 app.post('/gupshup', async (req, res) => {
-  const payload = req.body.payload;
-  if (!payload || !payload.source || !payload.payload?.text) {
-    return res.sendStatus(400);
-  }
+  const incoming = req.body.payload?.payload;
+  const phone = incoming?.sender?.phone;
+  const message = incoming?.payload?.text?.toLowerCase().trim();
+  if (!phone || !message) return res.sendStatus(200);
 
-  const sender = payload.source;
-  const incomingText = payload.payload.text.trim().toLowerCase();
+  const userRef = db.collection('users').doc(phone);
+  let userData = (await userRef.get()).data() || {};
 
-  let user = userState.get(sender) || { step: 0, data: {} };
-
-  // Step 0: Language
-  if (user.step === 0) {
-    await sendGupshupMessage(sender,
-      "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:\n1. हिंदी\n2. English\n3. मराठी"
-    );
-    user.step = 1;
-  }
-
-  else if (user.step === 1) {
-    if (incomingText === '1' || incomingText === 'hindi') {
-      user.language = 'hindi';
-      await sendGupshupMessage(sender, 'Aapne Hindi chuni hai. Aaiye shuru karte hain aapki Yojana jaankari!');
-      await sendGupshupMessage(sender, 'Aapka gender kya hai?\n1. Purush\n2. Mahila\n3. Anya');
-      user.step = 2;
-    } else {
-      await sendGupshupMessage(sender, 'Kripya 1 (Hindi), 2 (English), ya 3 (Marathi) mein se chunav karein.');
+  // Set language
+  if (!userData.language) {
+    if (message.includes('hindi') || message.includes('हिंदी')) userData.language = 'HI';
+    else if (message.includes('english') || message.includes('eng')) userData.language = 'EN';
+    else if (message.includes('marathi') || message.includes('मराठी')) userData.language = 'MR';
+    else {
+      await sendMessage(phone, LANGUAGE_QUESTIONS.HI.welcome);
+      return res.sendStatus(200);
     }
+    userData.answers = {};
+    userData.step = 0;
+    await userRef.set(userData);
   }
 
-  // Step 2: Gender
-  else if (user.step === 2) {
-    user.data.gender = incomingText;
-    await sendGupshupMessage(sender, 'Aapki age kitni hai? (Numeric mein likhein eg. 18)');
-    user.step = 3;
+  const lang = userData.language;
+  const questions = LANGUAGE_QUESTIONS[lang].questions;
+
+  // Store answer to last step
+  if (userData.step > 0) {
+    const lastKey = questions[userData.step - 1].key;
+    userData.answers[lastKey] = message;
   }
 
-  // Step 3: Age
-  else if (user.step === 3) {
-    user.data.age = parseInt(incomingText);
-    if (isNaN(user.data.age)) {
-      await sendGupshupMessage(sender, 'Kripya apni age sirf number mein bhejein (jaise 18)');
-    } else {
-      await sendGupshupMessage(sender,
-        'Aap kya karte hain?\n1. Student\n2. Unemployed\n3. Private Job\n4. Government Job\n5. Self-Employed'
-      );
-      user.step = 4;
-    }
+  // Skip logic
+  if (questions[userData.step]?.key === 'income' && ['student', 'unemployed', 'विद्यार्थी', 'बेरोजगार'].includes(userData.answers['occupation']?.toLowerCase())) {
+    userData.step++; // skip income
+  }
+  if (questions[userData.step]?.key === 'bank' && parseInt(userData.answers['age']) < 18) {
+    userData.step++; // skip bank
   }
 
-  // Step 4: Employment
-  else if (user.step === 4) {
-    user.data.employment = incomingText;
-
-    if (incomingText === '1' || incomingText === '2') {
-      await sendGupshupMessage(sender,
-        'Aapke guardian ki saalana aay kitni hai? (eg. 50000, 120000, 300000)'
-      );
-    } else {
-      await sendGupshupMessage(sender,
-        'Aapki saalana aay kitni hai? (eg. 50000, 120000, 300000)'
-      );
-    }
-    user.step = 5;
+  // Ask next question
+  if (userData.step < questions.length) {
+    const nextQ = questions[userData.step].text;
+    await sendMessage(phone, nextQ);
+    userData.step++;
+    await userRef.set(userData);
+  } else {
+    await sendMessage(phone, '✅ Thank you! We are checking schemes you are eligible for...');
+    // You can add further logic here for eligibility check/payment etc.
   }
 
-  // Step 5: Income
-  else if (user.step === 5) {
-    user.data.income = incomingText;
-
-    if (user.data.age < 18) {
-      user.step = 7;
-      await sendGupshupMessage(sender, 'Aap SC/ST/OBC/EWS category mein aate ho kya? (Haan / Nahi)');
-    } else {
-      user.step = 6;
-      await sendGupshupMessage(sender, 'Kya aapke paas bank account hai?\n1. Haan\n2. Nahin');
-    }
-  }
-
-  // Step 6: Bank Account (18+ only)
-  else if (user.step === 6) {
-    user.data.bank = incomingText;
-    user.step = 7;
-    await sendGupshupMessage(sender, 'Aap SC/ST/OBC/EWS category mein aate ho kya? (Haan / Nahi)');
-  }
-
-  // Step 7: Caste Category
-  else if (user.step === 7) {
-    user.data.caste = incomingText;
-    user.step = 8;
-    await sendGupshupMessage(sender, 'Kya aap kisi disability se jujh rahe ho? (Haan / Nahi)');
- 
-  }
-
-  // Step 9: Existing Scheme
-  else if (user.step === 8) {
-    user.data.existingYojana = incomingText;
-    user.step = 9;
-    await sendGupshupMessage(sender, 'Kya aapke paas ration card hai? (Haan / Nahi)');
-  }
-
-  // Step 10: Ration Card
-  else if (user.step === 9) {
-    user.data.rationCard = incomingText;
-    user.step = 999;
-
-    // End: Send payment link
-    await sendGupshupMessage(sender,
-      'Aapke liye Yojanayein mil gayi hain!\n\nPuri jaankari ke liye ₹49 ka ek chhota charge hai.'
-    );
-    await sendGupshupMessage(sender,
-      ' Note: ₹49 ek baar ka non-refundable charge hai.'
-    );
-    await sendGupshupMessage(sender, `Pay karne ke liye click karein:\nhttps://rzp.io/rzp/razorpay49`);
-  
-    
-  }
-
-  // Step 999: Completed
-  else if (user.step === 999) {
-    await sendGupshupMessage(sender, ' Aapka response already record ho chuka hai. Payment ke baad puri report milegi.');
-  }
-
-  userState.set(sender, user);
   res.sendStatus(200);
 });
 
+async function sendMessage(to, msg) {
+  await axios.post(
+    'https://api.gupshup.io/sm/api/v1/msg',
+    new URLSearchParams({
+      channel: 'whatsapp',
+      source: process.env.GUPSHUP_PHONE_NUMBER,
+      destination: to,
+      message: JSON.stringify({ type: 'text', text: msg }),
+    }),
+    {
+      headers: {
+        'apikey': process.env.GUPSHUP_APP_TOKEN,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
+  );
+}
+
 app.listen(PORT, () => {
-  console.log(`✅ ApnaScheme Bot running on port ${PORT}`);
+  console.log(`✅ ApnaScheme bot server running on port ${PORT}`);
 });
