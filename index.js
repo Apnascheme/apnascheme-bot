@@ -39,7 +39,8 @@ app.post('/gupshup', async (req, res) => {
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       template: 'welcome_user', // <-- Replace with your approved template name
-      templateParams: '[]' // No params or put them like '["value1", "value2"]'
+     templateParams: ''
+ // No params or put them like '["value1", "value2"]'
     };
 
     const headers = {
