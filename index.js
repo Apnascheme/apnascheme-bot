@@ -56,7 +56,7 @@ const sendMessage = async (phone, msg) => {
       source: GUPSHUP_PHONE_NUMBER,
       destination: phone,
       message: msg,
-      src.name: 'ApnaSchemeTechnologies'
+      'src.name': 'ApnaSchemeTechnologies'
     },
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
