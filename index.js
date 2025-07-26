@@ -55,7 +55,7 @@ app.post('/gupshup', async (req, res) => {
 
   try {
     const response = await axios.post(
-      'https://api.gupshup.io/wa/api/v1/msg',
+      'https://api.gupshup.io/wa/api/v1/template/msg',
       new URLSearchParams(msgParams).toString(),
       { headers }
     );
