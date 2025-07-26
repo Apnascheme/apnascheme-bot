@@ -33,7 +33,7 @@ const questions = [
 
 const userContext = new Map();
 
-app.post('/webhook', async (req, res) => {
+app.post('/gupshup', async (req, res) => {
   const body = req.body;
   const phone = body.payload?.sender?.phone;
   const message = body.payload?.payload?.text?.trim();
