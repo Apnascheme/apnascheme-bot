@@ -41,7 +41,7 @@ app.post('/gupshup', async (req, res) => {
     message: JSON.stringify({
       type: 'template',
       template: {
-        name: 'welcome_user', // Replace with actual approved template
+        id: 'welcome_user', // Replace with actual approved template
         languageCode: 'en', // Or 'hi' or 'mr' if you're using Hindi/Marathi templates
         components: [] // Pass parameters here if needed
       }
@@ -55,7 +55,7 @@ app.post('/gupshup', async (req, res) => {
 
   try {
     const response = await axios.post(
-      'https://api.gupshup.io/wa/api/v1/template/msg',
+      'https://api.gupshup.io/wa/api/v2/template/msg',
       new URLSearchParams(msgParams).toString(),
       { headers }
     );
