@@ -6,33 +6,40 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Parse incoming JSON
 app.use(express.json());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running ');
+  res.send('ApnaScheme Bot is running 🚀');
 });
 
-// Webhook endpoint
+// Webhook endpoint for Gupshup
 app.post('/gupshup', async (req, res) => {
-
   console.log("Full incoming payload:", JSON.stringify(req.body, null, 2));
 
-  
-  const sender = req.body.payload?.source;
-  const message = req.body.payload?.payload?.text;
+  const payload = req.body.payload;
 
-  console.log('Incoming message from ${sender} : ${message}');
+  // Validate payload structure
+  if (!payload || !payload.source || !payload.payload?.text) {
+    console.error('Invalid payload structure.');
+    return res.sendStatus(400);
+  }
 
- 
-  if (message && message.toLowerCase() === 'Hi') {
+  const sender = payload.source;
+  const message = payload.payload.text?.toLowerCase();
+
+  console.log(`Incoming message from ${sender} : ${message}`);
+
+  // Reply to "hi" or "Hi"
+  if (message === 'hi') {
     const msgParams = {
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
-      template: 'welcome_user',
-      templateParams: '[]'
+      template: 'welcome_user', // <-- Replace with your approved template name
+      templateParams: '[]' // No params or put them like '["value1", "value2"]'
     };
 
     const headers = {
@@ -40,29 +47,26 @@ app.post('/gupshup', async (req, res) => {
       apikey: process.env.GUPSHUP_APP_TOKEN
     };
 
-    console.log("Sending message with params:");
-    console.log(msgParams);
-    console.log("Headers:");
-    console.log(headers);
-
     try {
       const response = await axios.post(
         'https://api.gupshup.io/sm/api/v1/msg',
         new URLSearchParams(msgParams).toString(),
         { headers }
       );
-      console.log('Message sent. Gupshup response: ${response.status}');
+
+      console.log(`Message sent. Gupshup response: ${response.status}`);
     } catch (error) {
-      console.error('Error sending message: ${error.response?.data || error.message}');
+      console.error('Error sending message:', error.response?.data || error.message);
     }
   }
 
+  // Always respond with 200 to Gupshup to avoid retries
   res.sendStatus(200);
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(` ApnaScheme bot server started on port ${PORT}`);
-  console.log("Available at your primary URL https://apnascheme-bot.onrender.com");
+  console.log(`✅ ApnaScheme bot server started on port ${PORT}`);
+  console.log(`🌐 Available at: https://apnascheme-bot.onrender.com`);
   console.log('///////////////////////////////////////////////////////////\n');
 });
