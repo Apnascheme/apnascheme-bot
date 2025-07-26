@@ -26,7 +26,6 @@ app.post('/gupshup', async (req, res) => {
   const message = payload.payload.text.toLowerCase();
 
   if (message === 'hi') {
-    // Prepare WhatsApp template message for Gupshup API
     const params = new URLSearchParams({
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
@@ -34,11 +33,10 @@ app.post('/gupshup', async (req, res) => {
       'src.name': 'ApnaSchemeTechnologies',
       message: JSON.stringify({
         type: 'text',
-text: "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳.\n\n" +
-      "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –bina agent, bina form, bina confusion.
-.\n\n" +
-      "Apni bhaasha chunein:\n1.  हिंदी\n2. English\n3. मराठी"
-
+        text: 
+          "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳.\n\n" +
+          "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n" +
+          "Apni bhaasha chunein:\n1. हिंदी\n2. English\n3. मराठी"
       })
     });
 
