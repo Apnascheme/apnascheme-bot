@@ -60,5 +60,5 @@ app.post('/gupshup', async (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(✅ Server started on port ${PORT});
+  console.log('✅ Server started on port ${PORT}');
 });
