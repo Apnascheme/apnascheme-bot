@@ -150,7 +150,7 @@ app.post('/gupshup', async (req, res) => {
     );
     await sendGupshupMessage(sender, `💳 Pay karne ke liye click karein:\nhttps://rzp.io/rzp/razorpay49`);
   
-    );
+    
   }
 
   // Step 999: Completed
