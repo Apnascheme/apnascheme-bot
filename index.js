@@ -1,151 +1,108 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import crypto from 'crypto';
+import fs from 'fs';
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-// State to track user progress
-const userState = new Map();
+initializeApp({
+  credential: applicationDefault(),
+});
 
-async function sendGupshupMessage(destination, text) {
-  const params = new URLSearchParams({
-    channel: 'whatsapp',
-    source: process.env.GUPSHUP_PHONE_NUMBER,
-    destination: destination,
-    'src.name': 'ApnaSchemeTechnologies',
-    message: JSON.stringify({ type: 'text', text: text })
-  });
+const db = getFirestore();
 
-  try {
-    await axios.post(
-      'https://api.gupshup.io/sm/api/v1/msg',
-      params,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          apikey: process.env.GUPSHUP_APP_TOKEN
-        }
-      }
-    );
-  } catch (error) {
-    console.error("❌ Error sending message:", error.response?.data || error.message);
+const questions = [
+  { id: 'q1', text: 'Aapka gender kya hai?\n👨‍🦰 Purush\n👩 Mahila\n🧕 Anya', key: 'gender' },
+  { id: 'q2', text: 'Aapki age kitni hai? (Numeric mein likhein eg. 18)', key: 'age' },
+  { id: 'q3', text: 'Aapka rajya kaunsa hai?', key: 'state' },
+  { id: 'q4', text: 'Aap SC/ST/OBC/EWS category mein aate ho kya?\nHaan / Nahi', key: 'casteCategory' },
+  { id: 'q5', text: 'Aapka current occupation kya hai?\nStudent / Unemployed / Employed / Self-employed / Farmer / Labourer', key: 'occupation' },
+  { id: 'q6', text: 'Aapka ghar ka saalana aay kya hai?', key: 'income' },
+  { id: 'q7', text: 'Aapka bank account khula hai kya?\nHaan / Nahi', key: 'bankAccount' },
+  { id: 'q8', text: 'Kya aapke paas ration card hai?\nHaan / Nahi', key: 'rationCard' },
+  { id: 'q9', text: 'Kya aap kisi existing Sarkari Yojana ka labh le rahe ho?\nHaan / Nahi', key: 'existingScheme' }
+];
+
+const userContext = new Map();
+
+app.post('/webhook', async (req, res) => {
+  const body = req.body;
+  const phone = body.payload?.sender?.phone;
+  const message = body.payload?.payload?.text?.trim();
+
+  if (!phone || !message) return res.sendStatus(200);
+
+  const userRef = db.collection('users').doc(phone);
+  let userData = (await userRef.get()).data() || {};
+  let context = userContext.get(phone) || { currentQuestionIndex: 0 };
+
+  if (message.toLowerCase() === 'hi') {
+    context = { currentQuestionIndex: 0 };
+    userContext.set(phone, context);
+    await sendMessage(phone, questions[0].text);
+    return res.sendStatus(200);
   }
-}
 
-app.post('/gupshup', async (req, res) => {
-  const payload = req.body.payload;
-  if (!payload || !payload.source || !payload.payload?.text) {
-    return res.sendStatus(400);
+  // Save response
+  const prevQ = questions[context.currentQuestionIndex];
+  if (prevQ) {
+    userData[prevQ.key] = message;
+    await userRef.set(userData, { merge: true });
   }
 
-  const sender = payload.source;
-  const incomingText = payload.payload.text.trim().toLowerCase();
+  // Skip logic
+  context.currentQuestionIndex++;
+  while (context.currentQuestionIndex < questions.length) {
+    const nextQ = questions[context.currentQuestionIndex];
 
-  let user = userState.get(sender) || { step: 0, data: {} };
-
-  // Step 0: Language Selection
-  if (user.step === 0) {
-    await sendGupshupMessage(sender,
-      "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:\n1. हिंदी\n2. English\n3. मराठी"
-    );
-    user.step = 1;
-  } else if (user.step === 1) {
-    if (incomingText === '1' || incomingText === 'hindi') {
-      user.language = 'hindi';
-      await sendGupshupMessage(sender, 'Aapne Hindi chuni hai. Aaiye shuru karte hain aapki Yojana jaankari!');
-      await sendGupshupMessage(sender, 'Aapka gender kya hai?\n1. Purush\n2. Mahila\n3. Anya');
-      user.step = 2;
-    } else {
-      await sendGupshupMessage(sender, 'Kripya 1 (Hindi), 2 (English), ya 3 (Marathi) mein se chunav karein.');
+    if (nextQ.id === 'q6' && ['Student', 'Unemployed'].includes(userData.occupation)) {
+      userData['guardianIncome'] = message;
+      context.currentQuestionIndex++;
+      continue;
     }
-  }
 
-  // Step 2: Gender
-  else if (user.step === 2) {
-    user.data.gender = incomingText;
-    await sendGupshupMessage(sender, 'Aapki age kitni hai? (Numeric mein likhein eg. 18)');
-    user.step = 3;
-  }
-
-  // Step 3: Age
-  else if (user.step === 3) {
-    user.data.age = parseInt(incomingText);
-    if (isNaN(user.data.age)) {
-      await sendGupshupMessage(sender, 'Kripya apni age sirf number mein bhejein (jaise 18)');
-    } else {
-      await sendGupshupMessage(sender,
-        'Aap kya karte hain?\n1. Student\n2. Unemployed\n3. Private Job\n4. Government Job\n5. Self-Employed'
-      );
-      user.step = 4;
+    if (nextQ.id === 'q7' && Number(userData.age) < 18) {
+      context.currentQuestionIndex++;
+      continue;
     }
+
+    break;
   }
 
-  // Step 4: Employment Status
-  else if (user.step === 4) {
-    user.data.employment = incomingText;
-
-    if (incomingText === '1' || incomingText === '2') {
-      // Student or Unemployed – skip income, ask about guardian income
-      await sendGupshupMessage(sender,
-        'Aapke guardian ki saalana aay kitni hai? (eg. 50000, 120000, 300000)'
-      );
-      user.step = 5;
-    } else {
-      // Ask about user's own income
-      await sendGupshupMessage(sender, 'Aapki saalana aay kitni hai? (eg. 50000, 120000, 300000)');
-      user.step = 5;
-    }
+  if (context.currentQuestionIndex >= questions.length) {
+    await sendMessage(phone, 'Shukriya! Aapke sabhi jawaab mil gaye hain. Ab main check kar raha hoon kaunsi Yojana aapke liye hai...');
+    userContext.delete(phone);
+  } else {
+    await sendMessage(phone, questions[context.currentQuestionIndex].text);
+    userContext.set(phone, context);
   }
 
-  // Step 5: Income
-  else if (user.step === 5) {
-    user.data.income = incomingText;
-
-    if (user.data.age < 18) {
-      // Skip bank account question
-      await sendGupshupMessage(sender,
-        '✅ Apke liye 4 Sarkari Yojana mil sakti hain.\n\nLekin puri jaankari aur personal madad ke liye ₹49 ka ek chhota charge hai.'
-      );
-      await sendGupshupMessage(sender,
-        '⚠️ Kripya note karein: ₹49 ek baar ka non-refundable charge hai.'
-      );
-      await sendGupshupMessage(sender, `✅ Pay karne ke liye yeh link kholen:\nhttps://rzp.io/l/apnascheme49`);
-      await sendGupshupMessage(sender, `Apne doston ko bhejein:\nhttps://wa.me/?text=🇮🇳 Kaunsi Sarkari Yojana aapke liye hai?\n\n✅ WhatsApp pe free check karo\n💸 Puri madad bhi milegi (₹49 mein)\n👉 wa.me/91${process.env.GUPSHUP_PHONE_NUMBER}?text=Hi`);
-      user.step = 999;
-    } else {
-      await sendGupshupMessage(sender, 'Kya aapke paas bank account hai?\n1. Haan\n2. Nahin');
-      user.step = 6;
-    }
-  }
-
-  // Step 6: Bank Account (only if age >= 18)
-  else if (user.step === 6) {
-    user.data.bank = incomingText;
-
-    await sendGupshupMessage(sender,
-      '✅ Apke liye  Sarkari Yojana mil sakti hain.\n\nLekin puri jaankari ke liye ₹49 charge hai.'
-    );
-    await sendGupshupMessage(sender,
-      '⚠️ Kripya note karein: ₹49 ek baar ka non-refundable charge hai.'
-    );
-    await sendGupshupMessage(sender, `✅ Pay karne ke liye yeh link kholen:\nhttps://rzp.io/rzp/razorpay49`);
-    await sendGupshupMessage(sender, `Apne doston ko bhejein:\nhttps://wa.me/?text=🇮🇳 Kaunsi Sarkari Yojana aapke liye hai?\n\n✅ WhatsApp pe free check karo\n💸 Puri madad bhi milegi (₹49 mein)\n👉 wa.me/91${process.env.GUPSHUP_PHONE_NUMBER}?text=Hi`);
-    user.step = 999;
-  }
-
-  // Step 999: Already completed
-  else if (user.step === 999) {
-    await sendGupshupMessage(sender, 'Aapne pehle hi ₹49 process dekh liya hai. Payment ke baad aapko puri list mil jaayegi.');
-  }
-
-  userState.set(sender, user);
   res.sendStatus(200);
 });
 
+async function sendMessage(phone, text) {
+  await axios.post('https://api.gupshup.io/sm/api/v1/msg', {
+    channel: 'whatsapp',
+    source: process.env.GUPSHUP_PHONE,
+    destination: phone,
+    message: { type: 'text', text },
+    'src.name': process.env.GUPSHUP_BOTNAME
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': process.env.GUPSHUP_API_KEY
+    }
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`✅ Server started on port ${PORT}`);
+  console.log(`ApnaScheme bot server started on port ${PORT}`);
 });
