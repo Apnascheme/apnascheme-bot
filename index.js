@@ -126,13 +126,7 @@ app.post('/gupshup', async (req, res) => {
     user.data.caste = incomingText;
     user.step = 8;
     await sendGupshupMessage(sender, 'Kya aap kisi disability se jujh rahe ho? (Haan / Nahi)');
-  }
-
-  // Step 8: Disability
-  else if (user.step === 8) {
-    user.data.disability = incomingText;
-    user.step = 9;
-    await sendGupshupMessage(sender, 'Kya aap kisi Sarkari Yojana ka labh le rahe ho? (Haan / Nahi)');
+ 
   }
 
   // Step 9: Existing Scheme
@@ -149,14 +143,13 @@ app.post('/gupshup', async (req, res) => {
 
     // End: Send payment link
     await sendGupshupMessage(sender,
-      '✅ Aapke liye kaafi Yojanayein mil sakti hain!\n\nPuri jaankari aur personal madad ke liye ₹49 ka ek chhota charge hai.'
+      '✅ Aapke liye kaafi Yojanayein mil sakti hain!\n\nPuri jaankari ke liye ₹49 ka ek chhota charge hai.'
     );
     await sendGupshupMessage(sender,
       '⚠️ Note: ₹49 ek baar ka non-refundable charge hai.'
     );
-    await sendGupshupMessage(sender, `💳 Pay karne ke liye click karein:\nhttps://rzp.io/l/apnascheme49`);
-    await sendGupshupMessage(sender,
-      `🔗 Apne doston ke saath bhi share karein:\nhttps://wa.me/?text=🇮🇳 Kaunsi Sarkari Yojana aapke liye hai?\n✅ WhatsApp pe free check karo\n👉 wa.me/91${process.env.GUPSHUP_PHONE_NUMBER}?text=Hi`
+    await sendGupshupMessage(sender, `💳 Pay karne ke liye click karein:\nhttps://rzp.io/rzp/razorpay49`);
+  
     );
   }
 
