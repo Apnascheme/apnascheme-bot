@@ -118,11 +118,11 @@ app.post('/gupshup', async (req, res) => {
    let closingMessage = "";
 
 if (user.language === '1') {
-  closingMessage = `धन्यवाद!\nआप सरकारी योजना के लिए पात्र हैं!\n\nपूरी जानकारी चाहिए?(अप्लाई करने का लिंक)\nसिर्फ ₹49 में पाएं पूरी योजनाओं की जानकारी!\n\nतुरंत व्हाट्सएप पर पूरी सूची भेजी जाएगी`;
+  closingMessage = 'धन्यवाद!\n\nआप सरकारी योजना के लिए पात्र हैं!\n\nयोजनाओं के नाम, अप्लाई करने का लिंक और पूरी जानकारी चाहिए?\nयह पूरी मदद सिर्फ ₹49 में मिलेगी।\n\nPay karo yahaan: https://rzp.io/rzp/razorpay49\n\nआपका भुगतान सुरक्षित है।\nपूरा scheme list तुरंत WhatsApp पर भेजा जाएगा।`;
 } else if (user.language === '2') {
-  closingMessage = `Thankyou!\nYou are eligible for government schemes!\n\nWant complete details?(Application Link)\nGet full Scheme names for just ₹49\n\nInstant WhatsApp delivery of all schemes`;
+  closingMessage = `Thank you!\n\nYou are eligible for government schemes!\n\nWant full details? (Scheme names, application link)\nYou’ll get everything for just ₹49.\n\nMake Payment here: https://rzp.io/rzp/razorpay49\n\nSecure payment.\nFull scheme list will be sent instantly via WhatsApp.`;
 } else if (user.language === '3') {
-  closingMessage = `आभार!\nतुम्ही सरकारी योजनांसाठी पात्र आहात!\n\nपूर्ण माहिती हवी?(अर्ज लिंक)\nफक्त ₹49 मध्ये संपूर्ण योजनांची नावे मिळवा!\n\nसर्व योजनांची माहिती लगेच व्हाट्सॲपवर मिळेल`;
+  closingMessage = `आभार!\n\nतुम्ही सरकारी योजनांसाठी पात्र आहात!\n\nसंपूर्ण माहिती हवी आहे? (योजना नावे, अर्ज लिंक्स)\nसर्व माहिती फक्त ₹49 मध्ये मिळेल.\n\nपैसे भरा इथे: https://rzp.io/rzp/razorpay49\n\nतुमचं पेमेंट सुरक्षित आहे.\nसर्व योजना WhatsApp वर लगेच पाठवल्या जातील.`;
 }
 
 await sendMessage(phone, closingMessage);
