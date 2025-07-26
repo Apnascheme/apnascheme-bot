@@ -48,7 +48,7 @@ app.post('/gupshup', async (req, res) => {
           }
         }
       );
-      console.log(✅ Message sent. Gupshup response:, response.data);
+      console.log(" Message sent. Gupshup response:", response.data);
     } catch (error) {
       console.error('❌ Error sending message:', error.response?.data || error.message);
     }
