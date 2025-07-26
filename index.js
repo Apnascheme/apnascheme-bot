@@ -130,14 +130,14 @@ app.post('/gupshup', async (req, res) => {
   }
 
   // Step 9: Existing Scheme
-  else if (user.step === 9) {
+  else if (user.step === 8) {
     user.data.existingYojana = incomingText;
     user.step = 10;
     await sendGupshupMessage(sender, 'Kya aapke paas ration card hai? (Haan / Nahi)');
   }
 
   // Step 10: Ration Card
-  else if (user.step === 10) {
+  else if (user.step === 9) {
     user.data.rationCard = incomingText;
     user.step = 999;
 
