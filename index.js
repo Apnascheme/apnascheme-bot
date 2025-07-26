@@ -18,7 +18,7 @@ const QUESTIONS = {
     "Aapka gender kya hai? (Male/Female/Other)",
     "Aapki age kitni hai? (Numeric mein likhein eg. 18)",
     "Aap kya karte ho? (Student/Unemployed/Employed)",
-    "Agar aap Student ya Unemployed hain, to aapke guardian ki saalana income kitni hai? (eg. 120000)",
+    "Aapke Pitaji ki saalana income kitni hai? (eg. 120000)",
     "Kya aapke paas bank account hai? (Yes/No)",
     "Kya aapke paas ration card hai? (Yes/No)",
     "Kya aap kisi existing Sarkari Yojana ka labh le rahe ho? (Yes/No)",
@@ -29,10 +29,9 @@ const QUESTIONS = {
     "What is your gender? (Male/Female/Other)",
     "What is your age? (Enter number eg. 18)",
     "What do you do? (Student/Unemployed/Employed)",
-    "If Student or Unemployed, what is your guardian’s yearly income? (eg. 120000)",
+    "What is your Father's yearly income? (eg. 120000)",
     "Do you have a bank account? (Yes/No)",
     "Do you have a ration card? (Yes/No)",
-    "Are you currently availing any government scheme? (Yes/No)",
     "Which state do you live in? (eg. Maharashtra)",
     "Do you belong to SC/ST/OBC/EWS category? (Yes/No)"
   ],
@@ -40,10 +39,9 @@ const QUESTIONS = {
     "तुमचं लिंग काय आहे? (Male/Female/Other)",
     "तुमचं वय किती आहे? (उदाहरण: 18)",
     "तुम्ही काय करता? (विद्यार्थी/बेरोजगार/नोकरी करता)",
-    "जर तुम्ही विद्यार्थी किंवा बेरोजगार असाल, तर पालकांचे वार्षिक उत्पन्न किती आहे? (उदा: 120000)",
+    "पालकांचे वार्षिक उत्पन्न किती आहे? (उदा: 120000)",
     "तुमचं बँक खाते आहे का? (होय/नाही)",
     "तुमच्याकडे रेशन कार्ड आहे का? (होय/नाही)",
-    "तुम्ही कोणत्याही सरकारी योजनेचा लाभ घेत आहात का? (होय/नाही)",
     "तुमचं राज्य कोणतं? (उदा: महाराष्ट्र)",
     "तुम्ही SC/ST/OBC/EWS प्रवर्गात मोडता का? (होय/नाही)"
   ]
@@ -98,7 +96,7 @@ app.post('/gupshup', async (req, res) => {
     else if (msg.includes('english')) userContext[phone] = { language: 'EN', responses: [] };
     else if (msg.includes('marathi') || msg.includes('मराठी')) userContext[phone] = { language: 'MR', responses: [] };
     else {
-      await sendMessage(phone, "🗣️ Apni bhaasha chunein:\n🔘 हिंदी 🔘 English 🔘 मराठी");
+      await sendMessage(phone,"Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:(1 ,2 ,3)\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
     }
 
