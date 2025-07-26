@@ -61,6 +61,9 @@ app.post('/gupshup', async (req, res) => {
 
   res.sendStatus(200);
 });
+app.get('/', (req, res) => {
+  res.send('ApnaScheme Bot is running 🚀');
+});
 
 // Start server
 app.listen(PORT, () => {
