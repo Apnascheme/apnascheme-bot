@@ -33,7 +33,7 @@ app.post('/gupshup', async (req, res) => {
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       message: JSON.stringify({
-        Namaste! I’m ApnaScheme – your digital guide for Government Schemes 🇮🇳
+        Namaste I’m ApnaScheme – your digital guide for Government Schemes 🇮🇳
 I help you find which Sarkari Yojanas you’re eligible for – no agents, no forms, no confusion.
 
 To continue, please choose your language:
