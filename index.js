@@ -36,33 +36,8 @@ app.post('/gupshup', async (req, res) => {
         type: 'template',
         template: {
           name: 'welcome_user',
-          languageCode: 'en',
-          components: [
-            {
-              type: "button",
-              subType: "quickReply",
-              index: 0,
-              parameters: [
-                { type: "payload", payload: "हिंदी" }
-              ]
-            },
-            {
-              type: "button",
-              subType: "quickReply",
-              index: 1,
-              parameters: [
-                { type: "payload", payload: "English" }
-              ]
-            },
-            {
-              type: "button",
-              subType: "quickReply",
-              index: 2,
-              parameters: [
-                { type: "payload", payload: "मराठी" }
-              ]
-            }
-          ]
+          languageCode: 'en'
+          // No need to send components unless your template has variables/buttons as variables
         }
       })
     });
@@ -78,16 +53,16 @@ app.post('/gupshup', async (req, res) => {
           }
         }
       );
-      console.log(' Message sent. Gupshup response:', response.data);
+      console.log('Message sent. Gupshup response:', response.data);
     } catch (error) {
-      console.error("❌ Error sending message:", error.response?.data || error.message);
+      console.error(" Error sending message:", error.response?.data || error.message);
     }
   }
 
-  // Always reply 200 OK to Gupshup webhook (DO NOT send template object here)
+  // Always reply 200 OK to Gupshup webhook
   res.sendStatus(200);
 });
 
 app.listen(PORT, () => {
-  console.log(' Server started on port ${PORT}');
+  console.log(`Server started on port ${PORT}`);
 });
