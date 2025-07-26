@@ -33,12 +33,10 @@ app.post('/gupshup', async (req, res) => {
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       message: JSON.stringify({
-        Namaste I’m ApnaScheme – your digital guide for Government Schemes 🇮🇳
-I help you find which Sarkari Yojanas you’re eligible for – no agents, no forms, no confusion.
-
-To continue, please choose your language:
-          // No need to send components unless your template has variables/buttons as variables
-        }
+        type: 'text',
+        text: "Namaste! I'm ApnaScheme – your digital guide for Government Schemes 🇮🇳\n\n" +
+              "I help you find which Sarkari Yojanas you're eligible for – no agents, no forms, no confusion.\n\n" +
+              "To continue, please choose your language:"
       })
     });
 
@@ -53,8 +51,8 @@ To continue, please choose your language:
           }
         }
       );
-      } catch (error) {
-      console.error("❌ Error sending message:", error.response?.data || error.message);
+    } catch (error) {
+      console.error("Error sending message:", error.response?.data || error.message);
     }
   }
 
