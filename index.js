@@ -92,9 +92,9 @@ app.post('/gupshup', async (req, res) => {
   const msg = data?.payload?.text?.toLowerCase().trim();
 
   if (!userContext[phone]) {
-    if (msg.includes('hindi') || msg.includes('हिंदी')) userContext[phone] = { language: '1', responses: [] };
-    else if (msg.includes('english')) userContext[phone] = { language: '2', responses: [] };
-    else if (msg.includes('marathi') || msg.includes('मराठी')) userContext[phone] = { language: '3', responses: [] };
+    if (msg.includes('1') || msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
+    else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
+    else if (msg.includes('3') || msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
     else {
       await sendMessage(phone,"Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein:(1 ,2 ,3)\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
