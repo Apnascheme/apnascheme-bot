@@ -132,7 +132,7 @@ app.post('/gupshup', async (req, res) => {
   // Step 9: Existing Scheme
   else if (user.step === 8) {
     user.data.existingYojana = incomingText;
-    user.step = 10;
+    user.step = 9;
     await sendGupshupMessage(sender, 'Kya aapke paas ration card hai? (Haan / Nahi)');
   }
 
@@ -143,19 +143,19 @@ app.post('/gupshup', async (req, res) => {
 
     // End: Send payment link
     await sendGupshupMessage(sender,
-      '✅ Aapke liye kaafi Yojanayein mil sakti hain!\n\nPuri jaankari ke liye ₹49 ka ek chhota charge hai.'
+      'Aapke liye Yojanayein mil gayi hain!\n\nPuri jaankari ke liye ₹49 ka ek chhota charge hai.'
     );
     await sendGupshupMessage(sender,
-      '⚠️ Note: ₹49 ek baar ka non-refundable charge hai.'
+      ' Note: ₹49 ek baar ka non-refundable charge hai.'
     );
-    await sendGupshupMessage(sender, `💳 Pay karne ke liye click karein:\nhttps://rzp.io/rzp/razorpay49`);
+    await sendGupshupMessage(sender, `Pay karne ke liye click karein:\nhttps://rzp.io/rzp/razorpay49`);
   
     
   }
 
   // Step 999: Completed
   else if (user.step === 999) {
-    await sendGupshupMessage(sender, '✅ Aapka response already record ho chuka hai. Payment ke baad puri report milegi.');
+    await sendGupshupMessage(sender, ' Aapka response already record ho chuka hai. Payment ke baad puri report milegi.');
   }
 
   userState.set(sender, user);
