@@ -22,7 +22,7 @@ app.post('/gupshup', async (req, res) => {
   const sender = req.body.payload?.source;
   const message = req.body.payload?.payload?.text;
 
-  console.log(Incoming message from ${sender} : ${message});
+  console.log('Incoming message from ${sender} : ${message}');
 
  
   if (message && message.toLowerCase() === 'Hi') {
@@ -31,7 +31,7 @@ app.post('/gupshup', async (req, res) => {
       source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
-      template: 'language_selection_v1',
+      template: 'welcome_user',
       templateParams: '[]'
     };
 
