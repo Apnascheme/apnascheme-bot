@@ -9,8 +9,13 @@ console.log("GUPSHUP_APP_TOKEN:", process.env.GUPSHUP_APP_TOKEN ? "Loaded" : "No
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+import express from 'express';
+const app = express();
 
-app.use(express.json());
+// ✅ Required middleware
+app.use(express.json()); // For parsing application/json
+app.use('express.urlencoded({ extended: true }')); // For parsing form data (optional but helpful)
+
 
 app.post('/gupshup', async (req, res) => {
   const body = req.body;
