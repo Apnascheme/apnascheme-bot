@@ -35,7 +35,7 @@ app.post('/gupshup', async (req, res) => {
       message: JSON.stringify({
         type: 'text',
 text: "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳.\n\n" +
-      "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –\nbina agent, bina form, bina confusion.
+      "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai –bina agent, bina form, bina confusion.
 .\n\n" +
       "Apni bhaasha chunein:\n1.  हिंदी\n2. English\n3. मराठी"
 
