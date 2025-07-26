@@ -29,7 +29,7 @@ app.post('/gupshup', async (req, res) => {
   const sender = payload.source;
   const message = payload.payload.text?.toLowerCase();
 
-  console.log(Incoming message from ${sender} : ${message});
+  console.log('Incoming message from ${sender} : ${message}');
 
   // Reply to "hi" or "Hi"
  if (message === 'hi') {
