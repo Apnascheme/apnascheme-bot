@@ -1,65 +1,92 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import crypto from 'crypto';
+import fs from 'fs';
+import xlsx from 'xlsx';
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
+
+initializeApp({ credential: applicationDefault() });
+const db = getFirestore();
 
 app.use(express.json());
+app.get('/', (req, res) => res.send('ApnaScheme Bot is running 🚀'));
 
-// Health check route
-app.get('/', (req, res) => {
-  res.send('ApnaScheme Bot is running 🚀');
-});
-
-// Gupshup webhook endpoint
 app.post('/gupshup', async (req, res) => {
-  const payload = req.body.payload;
+  try {
+    const body = req.body;
+    const sender = body.payload?.sender?.phone;
+    const incomingMessage = body.payload?.payload?.text?.toLowerCase();
 
-  if (!payload || !payload.source || !payload.payload?.text) {
-    console.error("❌ Invalid payload structure.");
-    return res.sendStatus(400);
-  }
+    console.log('Incoming from:', sender, '| Message:', incomingMessage);
 
-  const sender = payload.source;
-  const message = payload.payload.text.toLowerCase();
+    if (!sender) return res.sendStatus(400);
 
-  if (message === 'hi') {
-    // Prepare WhatsApp template message for Gupshup API
-    const params = new URLSearchParams({
-      channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER,
-      destination: sender,
-      'src.name': 'ApnaSchemeTechnologies',
-      message: JSON.stringify({
-        type: 'text',
-        text: "Namaste! I'm ApnaScheme – your digital guide for Government Schemes 🇮🇳\n\n" +
-              "I help you find which Sarkari Yojanas you're eligible for – no agents, no forms, no confusion.\n\n" +
-              "To continue, please choose your language:"
-      })
-    });
-
-    try {
-      await axios.post(
-        'https://api.gupshup.io/sm/api/v1/msg',
-        params,
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            apikey: process.env.GUPSHUP_APP_TOKEN
-          }
+    // On "hi" or first message, trigger welcome template
+    if (incomingMessage === 'hi' || incomingMessage === 'hello') {
+      await sendGupshupMessage(sender, {
+        type: 'template',
+        template: {
+          name: 'welcome_user',
+          languageCode: 'en',
+          components: []
         }
-      );
-    } catch (error) {
-      console.error("Error sending message:", error.response?.data || error.message);
+      });
+    } else {
+      await sendGupshupMessage(sender, 'Type "hi" to start checking eligible Sarkari Yojanas 🇮🇳');
     }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+    res.sendStatus(500);
+  }
+});
+
+// ✅ Corrected function to send text or template messages via Gupshup
+async function sendGupshupMessage(destination, message) {
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    apikey: process.env.GUPSHUP_APP_TOKEN
+  };
+
+  const isTemplate = message.type === "template";
+  const params = {
+    channel: 'whatsapp',
+    source: process.env.GUPSHUP_PHONE_NUMBER,
+    destination,
+    'src.name': 'ApnaSchemeTechnologies'
+  };
+
+  if (isTemplate) {
+    params.message = message.template.name;
+    params.msgType = 'HSM';
+    params.isHSM = 'true';
+    params.language = message.template.languageCode;
+
+    if (message.template.components?.length > 0) {
+      const templateParams = message.template.components
+        .flatMap(c => c.parameters || [])
+        .map(p => p.text || '');
+      params.params = templateParams;
+    }
+  } else {
+    params.message = typeof message === 'string' ? message : JSON.stringify(message);
   }
 
-  // Always reply 200 OK to Gupshup webhook
-  res.sendStatus(200);
-});
+  return axios.post(
+    'https://api.gupshup.io/sm/api/v1/msg',
+    new URLSearchParams(params).toString(),
+    { headers }
+  );
+}
 
 app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+  console.log(`✅ ApnaScheme bot server started on port ${PORT}`);
 });
+
