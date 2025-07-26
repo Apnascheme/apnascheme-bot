@@ -15,15 +15,14 @@ const userContext = {}; // Temporary in-memory store
 
 const QUESTIONS = {
   1: [
-    "Aapka gender kya hai? (Male/Female/Other)",
-    "Aapki age kitni hai? (Numeric mein likhein eg. 18)",
-    "Aap kya karte ho? (Student/Unemployed/Employed)",
-    "Aapke Pitaji ki saalana income kitni hai? (eg. 120000)",
-    "Kya aapke paas bank account hai? (Yes/No)",
-    "Kya aapke paas ration card hai? (Yes/No)",
-    "Kya aap kisi existing Sarkari Yojana ka labh le rahe ho? (Yes/No)",
-    "Aapka rajya kaunsa hai? (eg. Maharashtra)",
-    "Aap SC/ST/OBC/EWS category mein aate ho kya? (Yes/No)"
+    "आपका लिंग क्या है? (पुरुष/महिला/अन्य)",
+    "आपकी उम्र कितनी है? (केवल संख्या में लिखें, जैसे: 18)",
+    "आप क्या करते हैं? (छात्र/बेरोज़गार/नौकरीपेशा/अन्य)",
+    "आपके माता-पिता की सालाना आय कितनी है? (केवल संख्या में लिखें, जैसे: 120000)",
+    "क्या आपका बैंक खाता है? (हाँ/नहीं)",
+    "क्या आपके पास राशन कार्ड है? (हाँ/नहीं)",
+    "आपका राज्य कौन सा है? (उदाहरण: महाराष्ट्र)",
+    "क्या आप SC/ST/OBC/EWS श्रेणी में आते हैं? (हाँ/नहीं)"
   ],
   2: [
     "What is your gender? (Male/Female/Other)",
