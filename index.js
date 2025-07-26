@@ -8,38 +8,67 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Health check route
+app.get('/', (req, res) => {
+  res.send('ApnaScheme Bot is running 🚀');
+});
+
 // Gupshup webhook endpoint
 app.post('/gupshup', async (req, res) => {
   const payload = req.body.payload;
 
   if (!payload || !payload.source || !payload.payload?.text) {
+    console.error("❌ Invalid payload structure.");
     return res.sendStatus(400);
   }
 
-  const sender = payload.source; // WhatsApp user's phone number
-  const message = payload.payload.text?.toLowerCase();
+  const sender = payload.source;
+  const message = payload.payload.text.toLowerCase();
 
   if (message === 'hi') {
-    // Prepare Gupshup template message parameters
+    // Send WhatsApp template using Gupshup outbound API
     const params = new URLSearchParams({
       channel: 'whatsapp',
-      source: process.env.GUPSHUP_PHONE_NUMBER, // Your WhatsApp business number
+      source: process.env.GUPSHUP_PHONE_NUMBER,
       destination: sender,
       'src.name': 'ApnaSchemeTechnologies',
       message: JSON.stringify({
         type: 'template',
         template: {
-          name: 'welcome_user', // Your pre-approved template name
+          name: 'welcome_user', // <-- your template name in Gupshup
           languageCode: 'en',
-          components: []
+          components: [
+            {
+              type: "button",
+              subType: "quickReply",
+              index: 0,
+              parameters: [
+                { type: "payload", payload: "हिंदी" }
+              ]
+            },
+            {
+              type: "button",
+              subType: "quickReply",
+              index: 1,
+              parameters: [
+                { type: "payload", payload: "English" }
+              ]
+            },
+            {
+              type: "button",
+              subType: "quickReply",
+              index: 2,
+              parameters: [
+                { type: "payload", payload: "मराठी" }
+              ]
+            }
+          ]
         }
       })
     });
 
     try {
-      // Trigger Gupshup outbound API to send WhatsApp message
-      const response = await axios.post(
-        'https://api.gupshup.io/sm/api/v1/msg',
+      const response = await axios.post( 'https://api.gupshup.io/sm/api/v1/msg',
         params,
         {
           headers: {
@@ -48,17 +77,16 @@ app.post('/gupshup', async (req, res) => {
           }
         }
       );
-      console.log(" Message sent. Gupshup response:", response.data);
+      console.log(' Message sent. Gupshup response:', response.data);
     } catch (error) {
-      console.error('❌ Error sending message:', error.response?.data || error.message);
+      console.error("❌ Error sending message:", error.response?.data || error.message);
     }
   }
 
-  // Always respond 200 OK to webhook
+  // Always reply 200 OK to Gupshup webhook
   res.sendStatus(200);
 });
 
-// Start the server
 app.listen(PORT, () => {
-  console.log('✅ Server started on port ${PORT}');
+  console.log(' Server started on port ${PORT}');
 });
