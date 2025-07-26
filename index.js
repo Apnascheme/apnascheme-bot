@@ -26,7 +26,7 @@ app.post('/gupshup', async (req, res) => {
   const message = payload.payload.text.toLowerCase();
 
   if (message === 'hi') {
-    // Send WhatsApp template using Gupshup outbound API
+    // Prepare WhatsApp template message for Gupshup API
     const params = new URLSearchParams({
       channel: 'whatsapp',
       source: process.env.GUPSHUP_PHONE_NUMBER,
@@ -35,7 +35,7 @@ app.post('/gupshup', async (req, res) => {
       message: JSON.stringify({
         type: 'template',
         template: {
-          name: 'welcome_user', // <-- your template name in Gupshup
+          name: 'welcome_user',
           languageCode: 'en',
           components: [
             {
@@ -68,7 +68,8 @@ app.post('/gupshup', async (req, res) => {
     });
 
     try {
-      const response = await axios.post( 'https://api.gupshup.io/sm/api/v1/msg',
+      const response = await axios.post(
+        'https://api.gupshup.io/sm/api/v1/msg',
         params,
         {
           headers: {
@@ -77,13 +78,13 @@ app.post('/gupshup', async (req, res) => {
           }
         }
       );
-      console.log(' Message sent. Gupshup response:', response.data);
+      console.log(✅' Message sent. Gupshup response:', response.data);
     } catch (error) {
       console.error("❌ Error sending message:", error.response?.data || error.message);
     }
   }
 
-  // Always reply 200 OK to Gupshup webhook
+  // Always reply 200 OK to Gupshup webhook (DO NOT send template object here)
   res.sendStatus(200);
 });
 
