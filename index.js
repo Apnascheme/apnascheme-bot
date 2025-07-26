@@ -115,7 +115,8 @@ app.post('/gupshup', async (req, res) => {
   if (next) {
     await sendMessage(phone, next);
   } else {
-    await sendMessage(phone, "Shukriya! Aapki saari jankari mil gayi hai. Ab hum aapke liye Yojana check karenge.");
+    await sendMessage(phone, "Aapke diye gaye jawaabon ke hisaab se:/nAap Sarkari Yojana ke liye eligible:/nIn Yojanon ke naam, full details chahiye?/nYeh poori madad sirf ₹49 mein milegi.
+");
     delete userContext[phone]; // Reset after flow
   }
 
