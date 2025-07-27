@@ -336,7 +336,9 @@ app.get('/', (req, res) => {
 });
 app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
-    // ===== ADD THIS BLOCK AT THE START =====
+    // Store the raw body for signature verification
+    const rawBody = req.body.toString('utf8');
+    
     if (process.env.NODE_ENV !== 'production') {
       console.warn("⚠️ Skipping signature verification in development");
     } else {
@@ -345,7 +347,7 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
       
       const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
-        .update(req.body)
+        .update(rawBody, 'utf8')
         .digest('hex');
 
       if (expectedSignature !== razorpaySignature) {
@@ -354,22 +356,22 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
       }
     }
 
-    // 3. Parse JSON payload SAFELY
+    // Parse JSON payload
     let payload;
     try {
-      payload = JSON.parse(req.body.toString());
+      payload = JSON.parse(rawBody);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       return res.status(400).send('Invalid JSON payload');
     }
 
-    // 4. Extract payment data with null checks
+    // Extract payment data with null checks
     const payment = payload?.payload?.payment?.entity;
     if (!payment) {
       return res.status(400).send('Invalid payment data');
     }
 
-    // 5. Process payment
+    // Process payment
     const userPhone = payment.notes?.phone;
     if (!userPhone) {
       return res.status(400).send('Phone number missing');
