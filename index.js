@@ -342,7 +342,7 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
     
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(req.body)
+      .update(req.body.toString('utf8'))
       .digest('hex');
 
     if (expectedSignature !== razorpaySignature) {
