@@ -101,59 +101,65 @@ async function loadSchemes() {
   });
 }
 
-// Filter eligible schemes
+// Filter eligible schemes (updated version)
 function getEligibleSchemes(userResponses) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
-    // Basic active status check
+    // 1. Check if scheme is active
     if (scheme.ActiveStatus !== 'Active') return false;
 
-    // State check (allow 'All India' or matching state)
-    if (scheme.TargetState !== 'All India' && scheme.TargetState !== state) return false;
+    // 2. State check (case-insensitive)
+    const userState = state.toLowerCase().trim();
+    const schemeState = scheme.TargetState.toLowerCase().trim();
+    if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // Age check (handle empty min/max ages)
+    // 3. Age check (handle empty values)
     const minAge = scheme.MinAge || 0;
     const maxAge = scheme.MaxAge || 100;
     if (age < minAge || age > maxAge) return false;
 
-    // Income check (skip if income limit not specified)
+    // 4. Income check (skip if not specified)
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // Caste check (allow if scheme says 'All' or matches user caste)
+    // 5. Caste check (handle 'All', empty, and various formats)
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
-      const schemeCastes = scheme.CasteEligibility.split('/');
-      const userCaste = caste.toLowerCase();
+      const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
+      const userCaste = caste.toLowerCase().trim();
       
-      if (!schemeCastes.some(c => c.toLowerCase() === userCaste)) {
-        return false;
-      }
+      // Handle 'General' vs 'EWS' cases
+      if (userCaste === 'general' && !schemeCastes.includes('general')) return false;
+      if (userCaste === 'no' && !schemeCastes.includes('general')) return false;
+      if (!schemeCastes.includes(userCaste)) return false;
     }
 
-    // Employment check (skip if 'All' or matches)
+    // 6. Occupation check (flexible matching)
     if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
       const userOccupation = occupation.toLowerCase();
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
       
-      if (!userOccupation.includes(schemeOccupation)) {
-        return false;
-      }
+      // Special handling for different occupation types
+      if (schemeOccupation === 'student' && !userOccupation.includes('student')) return false;
+      if (schemeOccupation === 'farmer' && !userOccupation.includes('farmer')) return false;
+      if (schemeOccupation === 'unemployed' && !userOccupation.includes('unemployed')) return false;
+      if (schemeOccupation === 'employed' && !userOccupation.includes('employed')) return false;
     }
 
-    // Bank account check (only if required)
+    // 7. Bank account check (only if required)
     if (scheme.BankAccountRequired) {
-      if (!['हाँ', 'yes', 'होय'].includes(hasBank.toLowerCase())) return false;
+      const hasBankLower = hasBank.toLowerCase();
+      if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
-    // Aadhaar/Ration check (only if required)
+    // 8. Aadhaar/Ration check (only if required)
     if (scheme.AadhaarRequired) {
-      if (!['हाँ', 'yes', 'होय'].includes(hasRation.toLowerCase())) return false;
+      const hasRationLower = hasRation.toLowerCase();
+      if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
     }
 
     return true;
   });
 }
-
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
   return mapping?.[rawInput] || rawInput;
