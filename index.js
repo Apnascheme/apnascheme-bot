@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
-
+import crypto from 'crypto'; 
 dotenv.config();
 
 const app = express();
@@ -335,6 +335,53 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
+// ==============================================
+// Step 1: Add Razorpay Webhook Route (PUT THIS RIGHT HERE)
+// ==============================================
+app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    // 1. Verify Webhook Signature
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(req.body)
+      .digest('hex');
+
+    if (expectedSignature !== razorpaySignature) {
+      return res.status(401).send('Invalid signature');
+    }
+
+    // 2. Parse Payment Data
+    const payment = JSON.parse(req.body).payload?.payment?.entity;
+    if (!payment || payment.status !== 'captured' || payment.amount !== 4900) {
+      return res.status(400).send('Invalid payment');
+    }
+
+    // 3. Get User Phone from Payment Notes
+    const userPhone = payment.notes?.phone;
+    if (!userPhone) return res.status(400).send('Phone missing');
+
+    // 4. Get User Context
+    const user = userContext[userPhone];
+    if (!user) return res.status(404).send('User not found');
+
+    // 5. Prepare WhatsApp Message (same as earlier example)
+    // ... [use the message formatting code from previous examples] ...
+
+    await sendMessage(userPhone, message);
+    delete userContext[userPhone]; // Cleanup
+    res.status(200).send('Success');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Server error');
+  }
+});
+
+// ==============================================
+// Step 2: Make sure this is your VERY LAST LINE
+// ==============================================
 app.listen(PORT, async () => {
   try {
     await loadSchemes();
