@@ -21,7 +21,7 @@ const QUESTIONS = {
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
     "आपकी उम्र कितनी है? (केवल संख्या में लिखें, जैसे: 18)",
     "आप क्या करते हैं?\n1. छात्र\n2. बेरोज़गार\n3. नौकरीपेशा\n4.दिव्यांग",
-    "आपके माता-पिता की सालाना आय कितनी है? (केवल संख्या में लिखें, जैसे: 120000)",
+    "आपके परिवार की सालाना आय कितनी है? (केवल संख्या में लिखें, जैसे: 120000)",
     "क्या आपका बैंक खाता है?\n1. हाँ\n2. नहीं",
     "क्या आपके पास राशन कार्ड है?\n1. हाँ\n2. नहीं",
     "आपका राज्य कौन सा है? (उदाहरण: महाराष्ट्र)",
@@ -31,7 +31,7 @@ const QUESTIONS = {
     "What is your gender?\n1. Male\n2. Female\n3. Other",
     "What is your age? (Enter number eg. 18)",
     "What do you do?\n1. Student\n2. Unemployed\n3. Employed\n4.Disabled",
-    "What is your Parent's yearly income? (eg. 120000)",
+    "What is your Household yearly income? (eg. 120000)",
     "Do you have a bank account?\n1. Yes\n2. No",
     "Do you have a ration card?\n1. Yes\n2. No",
     "Which state do you live in? (eg. Maharashtra)",
@@ -41,7 +41,7 @@ const QUESTIONS = {
     "तुमचं लिंग काय आहे?\n1.पुरुष\n2.महिला\n3.इतर",
     "तुमचं वय किती आहे? (उदाहरण: 18)",
     "तुम्ही काय करता?\n1. विद्यार्थी\n2. बेरोजगार\n3. नोकरी करता\n4. दिव्यांग",
-    "पालकांचे वार्षिक उत्पन्न किती आहे? (उा: 120000)",
+    "तुमच्या कुटुंबाचे वार्षिक उत्पन्न किती आहे? (फक्त संख्या लिहा, उदा: 120000)",
     "तुमचं बँक खाते आहे का?\n1. होय\n2. नाही",
     "तुमच्याकडे रेशन कार्ड आहे का?\n1. होय\n2. नाही",
     "तुमचं राज्य कोणतं? (उदा: महाराष्ट्र)",
@@ -298,23 +298,36 @@ app.post('/gupshup', async (req, res) => {
   const next = getNextQuestion(user);
   if (next) {
     await sendMessage(phone, next);
-  } else {
+ } else {
     const eligibleSchemes = getEligibleSchemes(user.responses);
-    let schemeList = eligibleSchemes.slice(0, 5).map(s => `• ${s.SchemeName}`).join('\n');
     
     let closingMessage = "";
     if (user.language === '1') {
-      closingMessage = `धन्यवाद! आप ${eligibleSchemes.length} योजनाओं के लिए पात्र हैं:\n\n${schemeList}\n\nपूरी सूची और आवेदन लिंक के लिए ₹49 का भुगतान करें:\nhttps://rzp.io/rzp/razorpay49`;
+        closingMessage = ` ज़बरदस्त खबर! आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+                      + ` सिर्फ ₹49 में पाएं:\n`
+                      + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
+                      + ` सीधे आवेदन करने के लिंक\n\n`
+                      + ` अभी पेमेंट करें: https://rzp.io/rzp/razorpay49\n\n`
+                      + ` ऑफर सीमित समय के लिए!`;
     } else if (user.language === '2') {
-      closingMessage = `Thank you! You're eligible for ${eligibleSchemes.length} schemes:\n\n${schemeList}\n\nPay ₹49 for full list with application links:\nhttps://rzp.io/rzp/razorpay49`;
+        closingMessage = ` Amazing News! You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+                      + ` For just ₹49 get:\n`
+                      + ` Complete list of all schemes for you\n`
+                      + ` Direct application links\n\n`
+                      + ` Make payment now: https://rzp.io/rzp/razorpay49\n\n`
+                      + `Limited time offer!`;
     } else if (user.language === '3') {
-      closingMessage = `आभार! तुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात:\n\n${schemeList}\n\nसंपूर्ण यादीसाठी ₹49 भरा:\nhttps://rzp.io/rzp/razorpay49`;
+        closingMessage = ` जबरदस्त बातम्या! तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+                      + ` फक्त ₹49 मध्ये मिळवा:\n`
+                      + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
+                      + ` थेट अर्ज करण्याचे लिंक\n\n`
+                      + ` आत्ताच पेमेंट करा: https://rzp.io/rzp/razorpay49\n\n`
+                      + ` मर्यादित वेळ ऑफर!`;
     }
 
     await sendMessage(phone, closingMessage);
     delete userContext[phone];
-  }
-
+}
   res.sendStatus(200);
 });
 
