@@ -131,7 +131,7 @@ if (res.length === 6) return q[6];
 if (res.length === 7) return q[7];
 
 return null;
-
+};
 
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
