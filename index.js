@@ -103,12 +103,13 @@ async function loadSchemes() {
 
 // Filter eligible schemes (updated version)
 // Filter eligible schemes (updated version)
-function getEligibleSchemes(userResponses) {
+function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
     if (scheme.ActiveStatus !== 'Active') return false;
 
+    const schemeNameLower = scheme.SchemeName?.toLowerCase() || '';
     const genderLower = gender?.toLowerCase() || '';
     const occupationLower = occupation?.toLowerCase() || '';
     const userState = state?.toLowerCase()?.trim() || '';
@@ -117,7 +118,7 @@ function getEligibleSchemes(userResponses) {
     // 🚫 1. Gender-specific schemes
     const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
     if (
-      womenSchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      womenSchemes.some(word => schemeNameLower.includes(word)) &&
       !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)
     ) {
       return false;
@@ -126,7 +127,7 @@ function getEligibleSchemes(userResponses) {
     // 🚫 2. Disability-specific schemes
     const disabilitySchemes = ['disability', 'divyang', 'viklang', 'udid', 'adip'];
     if (
-      disabilitySchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      disabilitySchemes.some(word => schemeNameLower.includes(word)) &&
       !occupationLower.includes('disabled')
     ) {
       return false;
@@ -135,7 +136,7 @@ function getEligibleSchemes(userResponses) {
     // 🚫 3. Maternity / health schemes filtering
     const maternitySchemes = ['janani', 'matru', 'maternity'];
     if (
-      maternitySchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      maternitySchemes.some(word => schemeNameLower.includes(word)) &&
       (
         genderLower !== 'female' ||
         age < 13 || age > 50
@@ -144,7 +145,15 @@ function getEligibleSchemes(userResponses) {
       return false;
     }
 
-    // 🚫 4. Occupation-specific filtering
+    // 🚫 4. Rashtriya Arogya Nidhi check (only if critical illness)
+    if (
+      schemeNameLower.includes('rashtriya arogya nidhi') &&
+      !hasCriticalIllness
+    ) {
+      return false;
+    }
+
+    // 🚫 5. Occupation-specific filtering
     if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
       if (!occupationLower.includes(schemeOccupation)) {
@@ -152,18 +161,18 @@ function getEligibleSchemes(userResponses) {
       }
     }
 
-    // ✅ 5. State filtering
+    // ✅ 6. State filtering
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // ✅ 6. Age range filtering
+    // ✅ 7. Age range filtering
     const minAge = scheme.MinAge || 0;
     const maxAge = scheme.MaxAge || 100;
     if (age < minAge || age > maxAge) return false;
 
-    // ✅ 7. Income check
+    // ✅ 8. Income check
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // ✅ 8. Caste filtering
+    // ✅ 9. Caste filtering
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       const userCaste = caste?.toLowerCase()?.trim() || '';
@@ -173,13 +182,13 @@ function getEligibleSchemes(userResponses) {
       }
     }
 
-    // ✅ 9. Bank account required
+    // ✅ 10. Bank account required
     if (scheme.BankAccountRequired) {
       const hasBankLower = hasBank?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
-    // ✅ 10. Aadhaar / Ration required
+    // ✅ 11. Aadhaar / Ration required
     if (scheme.AadhaarRequired) {
       const hasRationLower = hasRation?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
@@ -188,6 +197,7 @@ function getEligibleSchemes(userResponses) {
     return true;
   });
 }
+
 
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
