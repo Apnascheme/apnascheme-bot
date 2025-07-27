@@ -336,19 +336,19 @@ app.get('/', (req, res) => {
 });
 app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
-    // 1. Verify Webhook Signature
+    const rawBody = req.body.toString('utf8');
     const razorpaySignature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(req.body.toString('utf8'))
+        .update(rawBody) 
       .digest('hex');
-
-    if (expectedSignature !== razorpaySignature) {
+console.log(`Expected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
+     if (expectedSignature !== razorpaySignature) {
+      console.error('Signature mismatch!');
       return res.status(401).send('Invalid signature');
-    }
-
+     }
     // 2. Parse Payment Data
     const payment = JSON.parse(req.body).payload?.payment?.entity;
     if (!payment || payment.status !== 'captured' || payment.amount !== 4900) {
