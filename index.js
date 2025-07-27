@@ -198,32 +198,50 @@ const getNextQuestion = (user) => {
   const q = QUESTIONS[lang];
   const res = user.responses;
 
-  if (res.length === 0) return q[0];
-  if (res.length === 1) return q[1];
-  if (res.length === 2) return q[2];
+  if (res.length === 0) return q[0]; // Gender
+  if (res.length === 1) return q[1]; // Age
+  if (res.length === 2) return q[2]; // Occupation
 
   let occupation = res[2]?.toLowerCase();
 
-  if (occupation === '1') occupation = 'student';
-  else if (occupation === '2') occupation = 'unemployed';
-  else if (occupation === '3') occupation = 'employed';
-  else if (occupation === '4') occupation = 'other';
+  // Convert option numbers to labels first
+  if (lang === '1') { // Hindi
+    if (occupation === '1') occupation = 'छात्र';
+    else if (occupation === '2') occupation = 'बेरोज़गार';
+    else if (occupation === '3') occupation = 'नौकरीपेशा';
+    else if (occupation === '4') occupation = 'अन्य';
+  } else if (lang === '2') { // English
+    if (occupation === '1') occupation = 'student';
+    else if (occupation === '2') occupation = 'unemployed';
+    else if (occupation === '3') occupation = 'employed';
+    else if (occupation === '4') occupation = 'other';
+  } else if (lang === '3') { // Marathi
+    if (occupation === '1') occupation = 'विद्यार्थी';
+    else if (occupation === '2') occupation = 'बेरोजगार';
+    else if (occupation === '3') occupation = 'नोकरी करता';
+    else if (occupation === '4') occupation = 'इतर';
+  }
 
   const isStudent = ['student', 'छात्र', 'विद्यार्थी'].includes(occupation);
   const isUnemployed = ['unemployed', 'बेरोज़गार', 'बेरोजगार'].includes(occupation);
   const isEmployed = ['employed', 'नौकरीपेशा', 'नोकरी करता'].includes(occupation);
 
-  if (res.length === 3 && (isStudent || isUnemployed)) return q[4];
-  if (res.length === 3 && isEmployed) return q[3];
-
-  if (res.length === 4 && isEmployed) return q[4];
-  if (res.length === 4 && (isStudent || isUnemployed)) return q[5];
-
-  if (res.length === 5) return q[6];
-  if (res.length === 6) return q[7];
-  if (res.length === 7) return null;
-
-  return null;
+  // Always ask income question (q[3]) regardless of occupation
+  if (res.length === 3) return q[3]; // Income
+  
+  // Then proceed with bank account question
+  if (res.length === 4) return q[4]; // Bank account
+  
+  // Then ration card
+  if (res.length === 5) return q[5]; // Ration card
+  
+  // Then state
+  if (res.length === 6) return q[6]; // State
+  
+  // Finally caste
+  if (res.length === 7) return q[7]; // Caste
+  
+  return null; // Done
 };
 
 app.post('/gupshup', async (req, res) => {
