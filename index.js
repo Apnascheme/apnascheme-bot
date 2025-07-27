@@ -20,7 +20,7 @@ const QUESTIONS = {
   1: [
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
     "आपकी उम्र कितनी है? (केवल संख्या में लिखें, जैसे: 18)",
-    "आप क्या करते हैं?\n1. छात्र\n2. बेरोज़गार\n3. नौकरीपेशा\n4. अन्य",
+    "आप क्या करते हैं?\n1. छात्र\n2. बेरोज़गार\n3. नौकरीपेशा\n4.दिव्यांग",
     "आपके माता-पिता की सालाना आय कितनी है? (केवल संख्या में लिखें, जैसे: 120000)",
     "क्या आपका बैंक खाता है?\n1. हाँ\n2. नहीं",
     "क्या आपके पास राशन कार्ड है?\n1. हाँ\n2. नहीं",
@@ -30,7 +30,7 @@ const QUESTIONS = {
   2: [
     "What is your gender?\n1. Male\n2. Female\n3. Other",
     "What is your age? (Enter number eg. 18)",
-    "What do you do?\n1. Student\n2. Unemployed\n3. Employed\n4. Other",
+    "What do you do?\n1. Student\n2. Unemployed\n3. Employed\n4.Disabled",
     "What is your Parent's yearly income? (eg. 120000)",
     "Do you have a bank account?\n1. Yes\n2. No",
     "Do you have a ration card?\n1. Yes\n2. No",
@@ -40,7 +40,7 @@ const QUESTIONS = {
   3: [
     "तुमचं लिंग काय आहे?\n1.पुरुष\n2.महिला\n3.इतर",
     "तुमचं वय किती आहे? (उदाहरण: 18)",
-    "तुम्ही काय करता?\n1. विद्यार्थी\n2. बेरोजगार\n3. नोकरी करता\n4. इतर",
+    "तुम्ही काय करता?\n1. विद्यार्थी\n2. बेरोजगार\n3. नोकरी करता\n4. दिव्यांग",
     "पालकांचे वार्षिक उत्पन्न किती आहे? (उा: 120000)",
     "तुमचं बँक खाते आहे का?\n1. होय\n2. नाही",
     "तुमच्याकडे रेशन कार्ड आहे का?\n1. होय\n2. नाही",
@@ -52,21 +52,21 @@ const QUESTIONS = {
 const OPTION_MAPPINGS = {
   1: {
     0: { '1': 'पुरुष', '2': 'महिला', '3': 'अन्य' },
-    2: { '1': 'छात्र', '2': 'बेरोज़गार', '3': 'नौकरीपेशा', '4': 'अन्य' },
+    2: { '1': 'छात्र', '2': 'बेरोज़गार', '3': 'नौकरीपेशा', '4': 'दिव्यांग' },
     4: { '1': 'हाँ', '2': 'नहीं' },
     5: { '1': 'हाँ', '2': 'नहीं' },
     7: { '1': 'हाँ', '2': 'नहीं' }
   },
   2: {
     0: { '1': 'Male', '2': 'Female', '3': 'Other' },
-    2: { '1': 'Student', '2': 'Unemployed', '3': 'Employed', '4': 'Other' },
+    2: { '1': 'Student', '2': 'Unemployed', '3': 'Employed', '4': 'Disabled' },
     4: { '1': 'Yes', '2': 'No' },
     5: { '1': 'Yes', '2': 'No' },
     7: { '1': 'Yes', '2': 'No' }
   },
   3: {
     0: { '1': 'पुरुष', '2': 'महिला', '3': 'इतर' },
-    2: { '1': 'विद्यार्थी', '2': 'बेरोजगार', '3': 'नोकरी करता', '4': 'इतर' },
+    2: { '1': 'विद्यार्थी', '2': 'बेरोजगार', '3': 'नोकरी करता', '4': 'दिव्यांग' },
     4: { '1': 'होय', '2': 'नाही' },
     5: { '1': 'होय', '2': 'नाही' },
     7: { '1': 'होय', '2': 'नाही' }
@@ -102,6 +102,7 @@ async function loadSchemes() {
 }
 
 // Filter eligible schemes (updated version)
+// Filter eligible schemes (updated version)
 function getEligibleSchemes(userResponses) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
@@ -109,18 +110,30 @@ function getEligibleSchemes(userResponses) {
     // 1. Basic active status check
     if (scheme.ActiveStatus !== 'Active') return false;
 
-    // 2. Gender-specific scheme checks
-    if (scheme.SchemeName.includes('Sukanya Samriddhi') && 
-        !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(gender.toLowerCase())) {
+    // 2. Strict gender filtering for women-specific schemes
+    const womenSchemes = [
+      'Pradhan Mantri Matru Vandana Yojana',
+      'Ujjwala',
+      'Sukanya Samriddhi',
+      'Ladli Lakshmi',
+      'Bhagyashree'
+    ];
+    if (womenSchemes.some(name => scheme.SchemeName.includes(name)) && 
+        !['female', 'महिला', 'स्त्री', 'woman', 'girl', 'महिला', 'स्त्री'].includes(gender.toLowerCase())) {
       return false;
     }
 
-    // 3. Disability scheme checks
-    if (scheme.SchemeName.includes('Disability') || 
-        scheme.SchemeName.includes('Divyang') ||
-        scheme.SchemeName.includes('Viklang')) {
-      // Only show if user specifically indicated disability
-      if (!occupation.toLowerCase().includes('disabled')) return false;
+    // 3. Strict disability filtering
+    const disabilitySchemes = [
+      'Disability',
+      'Divyang',
+      'Viklang',
+      'UDID',
+      'ADIP'
+    ];
+    if (disabilitySchemes.some(name => scheme.SchemeName.includes(name)) && 
+        !(occupation && occupation.toLowerCase().includes('disabled'))) {
+      return false;
     }
 
     // 4. Occupation-specific checks
@@ -128,15 +141,14 @@ function getEligibleSchemes(userResponses) {
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
       const userOccupation = occupation.toLowerCase();
       
-      // Special cases
-      if (schemeOccupation === 'farmer' && !userOccupation.includes('farmer')) return false;
       if (schemeOccupation === 'student' && !userOccupation.includes('student')) return false;
+      if (schemeOccupation === 'farmer' && !userOccupation.includes('farmer')) return false;
       if (schemeOccupation === 'unemployed' && !userOccupation.includes('unemployed')) return false;
     }
 
     // 5. State check
-    const userState = state.toLowerCase().trim();
-    const schemeState = scheme.TargetState.toLowerCase().trim();
+    const userState = state?.toLowerCase()?.trim() || '';
+    const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
     // 6. Age check
@@ -150,10 +162,9 @@ function getEligibleSchemes(userResponses) {
     // 8. Caste check
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
-      const userCaste = caste.toLowerCase().trim();
+      const userCaste = caste?.toLowerCase()?.trim() || '';
       
       if (!schemeCastes.includes(userCaste)) {
-        // Handle general category
         if (userCaste === 'general' && !schemeCastes.includes('general')) return false;
         if (userCaste === 'no' && !schemeCastes.includes('general')) return false;
       }
@@ -161,13 +172,13 @@ function getEligibleSchemes(userResponses) {
 
     // 9. Bank account check
     if (scheme.BankAccountRequired) {
-      const hasBankLower = hasBank.toLowerCase();
+      const hasBankLower = hasBank?.toLowerCase() || '';
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
     // 10. Aadhaar check
     if (scheme.AadhaarRequired) {
-      const hasRationLower = hasRation.toLowerCase();
+      const hasRationLower = hasRation?.toLowerCase() || '';
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
     }
 
