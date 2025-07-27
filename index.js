@@ -103,6 +103,12 @@ async function loadSchemes() {
 
 // Filter eligible schemes (updated version)
 function getEligibleSchemes(userResponses) {
+  // Ensure we have all required responses
+  if (!userResponses || userResponses.length < 8) {
+    console.error('Incomplete user responses:', userResponses);
+    return [];
+  }
+
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
@@ -110,8 +116,8 @@ function getEligibleSchemes(userResponses) {
     if (scheme.ActiveStatus !== 'Active') return false;
 
     // 2. State check (case-insensitive)
-    const userState = state.toLowerCase().trim();
-    const schemeState = scheme.TargetState.toLowerCase().trim();
+    const userState = state?.toLowerCase()?.trim() || '';
+    const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
     // 3. Age check (handle empty values)
@@ -124,8 +130,11 @@ function getEligibleSchemes(userResponses) {
 
     // 5. Caste check (handle 'All', empty, and various formats)
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
+      const userCaste = caste?.toLowerCase()?.trim() || '';
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
-      const userCaste = caste.toLowerCase().trim();
+      
+      // If no caste provided and scheme requires specific caste, exclude
+      if (!userCaste) return false;
       
       // Handle 'General' vs 'EWS' cases
       if (userCaste === 'general' && !schemeCastes.includes('general')) return false;
@@ -135,8 +144,11 @@ function getEligibleSchemes(userResponses) {
 
     // 6. Occupation check (flexible matching)
     if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
-      const userOccupation = occupation.toLowerCase();
+      const userOccupation = occupation?.toLowerCase() || '';
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
+      
+      // If no occupation provided and scheme requires specific occupation, exclude
+      if (!userOccupation) return false;
       
       // Special handling for different occupation types
       if (schemeOccupation === 'student' && !userOccupation.includes('student')) return false;
@@ -147,13 +159,13 @@ function getEligibleSchemes(userResponses) {
 
     // 7. Bank account check (only if required)
     if (scheme.BankAccountRequired) {
-      const hasBankLower = hasBank.toLowerCase();
+      const hasBankLower = hasBank?.toLowerCase() || '';
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
     // 8. Aadhaar/Ration check (only if required)
     if (scheme.AadhaarRequired) {
-      const hasRationLower = hasRation.toLowerCase();
+      const hasRationLower = hasRation?.toLowerCase() || '';
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
     }
 
