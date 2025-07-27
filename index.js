@@ -334,7 +334,8 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.use('/payment-webhook', express.raw({ type: '*/*' })); {
+
   try {
     // Store the raw body for signature verification
     const rawBody = req.body.toString('utf8');
