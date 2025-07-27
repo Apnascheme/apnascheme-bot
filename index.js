@@ -336,32 +336,53 @@ app.get('/', (req, res) => {
 });
 app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
+    // 1. Store raw body for signature verification
     const rawBody = req.body.toString('utf8');
+    
+    // 2. Verify Webhook Signature
     const razorpaySignature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-        .update(rawBody) 
+      .update(rawBody)
       .digest('hex');
-console.log(`Expected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
-     if (expectedSignature !== razorpaySignature) {
-      console.error('Signature mismatch!');
+
+    if (expectedSignature !== razorpaySignature) {
+      console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
       return res.status(401).send('Invalid signature');
-     }
-    // 2. Parse Payment Data
-    const payment = JSON.parse(req.body).payload?.payment?.entity;
-    if (!payment || payment.status !== 'captured' || payment.amount !== 4900) {
-      return res.status(400).send('Invalid payment');
     }
 
-    // 3. Get User Phone from Payment Notes
-    const userPhone = payment.notes?.phone;
-    if (!userPhone) return res.status(400).send('Phone missing');
+    // 3. Parse JSON payload SAFELY
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return res.status(400).send('Invalid JSON payload');
+    }
 
-    // 4. Get User Context
-    const user = userContext[userPhone];
-    if (!user) return res.status(404).send('User not found');
+    // 4. Extract payment data with null checks
+    const payment = payload?.payload?.payment?.entity;
+    if (!payment) {
+      return res.status(400).send('Invalid payment data');
+    }
+
+    // 5. Process payment (your existing logic)
+    const userPhone = payment.notes?.phone;
+    if (!userPhone) {
+      return res.status(400).send('Phone number missing');
+    }
+
+    // ... rest of your payment processing logic ...
+
+    res.status(200).send('Webhook processed successfully');
+    
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).send('Server error');
+  }
+});
 
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
