@@ -104,21 +104,53 @@ async function loadSchemes() {
 // Filter eligible schemes
 function getEligibleSchemes(userResponses) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
-  
+
   return schemes.filter(scheme => {
-    return scheme.ActiveStatus === 'Active' &&
-      (scheme.TargetState === 'All India' || scheme.TargetState === state) &&
-      age >= (scheme.MinAge || 0) &&
-      age <= (scheme.MaxAge || 100) &&
-      (!scheme.IncomeLimit || income <= scheme.IncomeLimit) &&
-      (scheme.CasteEligibility === 'All' || 
-       (caste === 'हाँ' && scheme.CasteEligibility.includes('SC/ST/OBC')) ||
-       (caste === 'Yes' && scheme.CasteEligibility.includes('SC/ST/OBC')) ||
-       (caste === 'होय' && scheme.CasteEligibility.includes('SC/ST/OBC'))) &&
-      (scheme.EmploymentFilter === 'All' || 
-       scheme.EmploymentFilter.toLowerCase() === occupation.toLowerCase()) &&
-      (!scheme.BankAccountRequired || hasBank === 'हाँ' || hasBank === 'Yes' || hasBank === 'होय') &&
-      (!scheme.AadhaarRequired || hasRation === 'हाँ' || hasRation === 'Yes' || hasRation === 'होय');
+    // Basic active status check
+    if (scheme.ActiveStatus !== 'Active') return false;
+
+    // State check (allow 'All India' or matching state)
+    if (scheme.TargetState !== 'All India' && scheme.TargetState !== state) return false;
+
+    // Age check (handle empty min/max ages)
+    const minAge = scheme.MinAge || 0;
+    const maxAge = scheme.MaxAge || 100;
+    if (age < minAge || age > maxAge) return false;
+
+    // Income check (skip if income limit not specified)
+    if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
+
+    // Caste check (allow if scheme says 'All' or matches user caste)
+    if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
+      const schemeCastes = scheme.CasteEligibility.split('/');
+      const userCaste = caste.toLowerCase();
+      
+      if (!schemeCastes.some(c => c.toLowerCase() === userCaste)) {
+        return false;
+      }
+    }
+
+    // Employment check (skip if 'All' or matches)
+    if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
+      const userOccupation = occupation.toLowerCase();
+      const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
+      
+      if (!userOccupation.includes(schemeOccupation)) {
+        return false;
+      }
+    }
+
+    // Bank account check (only if required)
+    if (scheme.BankAccountRequired) {
+      if (!['हाँ', 'yes', 'होय'].includes(hasBank.toLowerCase())) return false;
+    }
+
+    // Aadhaar/Ration check (only if required)
+    if (scheme.AadhaarRequired) {
+      if (!['हाँ', 'yes', 'होय'].includes(hasRation.toLowerCase())) return false;
+    }
+
+    return true;
   });
 }
 
