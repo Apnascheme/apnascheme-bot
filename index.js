@@ -334,29 +334,27 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-app.use('/payment-webhook', express.raw({ type: '*/*' })); {
-
+app.post('/payment-webhook', express.raw({ type: '*/*' }), async (req, res) => {
   try {
     // Store the raw body for signature verification
     const rawBody = req.body.toString('utf8');
     
     if (process.env.NODE_ENV !== 'production' || req.headers['x-razorpay-signature'] === 'test_signature') {
-  console.warn("⚠️ Skipping signature verification in test mode");
-} else {
-  const razorpaySignature = req.headers['x-razorpay-signature'];
-  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      console.warn("⚠️ Skipping signature verification in test mode");
+    } else {
+      const razorpaySignature = req.headers['x-razorpay-signature'];
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  const expectedSignature = crypto
-    .createHmac('sha256', webhookSecret)
-    .update(rawBody, 'utf8')
-    .digest('hex');
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody, 'utf8')
+        .digest('hex');
 
-  if (expectedSignature !== razorpaySignature) {
-    console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
-    return res.status(401).send('Invalid signature');
-  }
-}
-
+      if (expectedSignature !== razorpaySignature) {
+        console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
+        return res.status(401).send('Invalid signature');
+      }
+    }
 
     // Parse JSON payload
     let payload;
@@ -383,7 +381,6 @@ app.use('/payment-webhook', express.raw({ type: '*/*' })); {
     if (!user) {
       return res.status(404).send('User not found');
     }
-
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
