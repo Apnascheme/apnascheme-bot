@@ -368,21 +368,16 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
       return res.status(400).send('Invalid payment data');
     }
 
-    // 5. Process payment (your existing logic)
+    // 5. Process payment
     const userPhone = payment.notes?.phone;
     if (!userPhone) {
       return res.status(400).send('Phone number missing');
     }
 
-    // ... rest of your payment processing logic ...
-
-    res.status(200).send('Webhook processed successfully');
-    
-  } catch (error) {
-    console.error('Webhook processing error:', error);
-    res.status(500).send('Server error');
-  }
-});
+    const user = userContext[userPhone];
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
 
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
