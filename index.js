@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import ExcelJS from 'exceljs';
 
 dotenv.config();
 const app = express();
@@ -12,6 +13,7 @@ const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
 const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 
 const userContext = {}; // Temporary in-memory store
+let schemes = []; // Store loaded schemes
 
 const QUESTIONS = {
   1: [
@@ -35,10 +37,10 @@ const QUESTIONS = {
     "Do you belong to SC/ST/OBC/EWS category?\n1. Yes\n2. No"
   ],
   3: [
-    "तुमचं लिंग काय आहे?\n1. Male\n2. Female\n3. Other",
+    "तुमचं लिंग काय आहे?\n1.पुरुष\n2.महिला\n3.इतर",
     "तुमचं वय किती आहे? (उदाहरण: 18)",
     "तुम्ही काय करता?\n1. विद्यार्थी\n2. बेरोजगार\n3. नोकरी करता\n4. इतर",
-    "पालकांचे वार्षिक उत्पन्न किती आहे? (उदा: 120000)",
+    "पालकांचे वार्षिक उत्पन्न किती आहे? (उा: 120000)",
     "तुमचं बँक खाते आहे का?\n1. होय\n2. नाही",
     "तुमच्याकडे रेशन कार्ड आहे का?\n1. होय\n2. नाही",
     "तुमचं राज्य कोणतं? (उदा: महाराष्ट्र)",
@@ -62,7 +64,7 @@ const OPTION_MAPPINGS = {
     7: { '1': 'Yes', '2': 'No' }
   },
   3: {
-    0: { '1': 'Male', '2': 'Female', '3': 'Other' },
+    0: { '1': 'पुरुष', '2': 'महिला', '3': 'इतर' },
     2: { '1': 'विद्यार्थी', '2': 'बेरोजगार', '3': 'नोकरी करता', '4': 'इतर' },
     4: { '1': 'होय', '2': 'नाही' },
     5: { '1': 'होय', '2': 'नाही' },
@@ -70,9 +72,58 @@ const OPTION_MAPPINGS = {
   }
 };
 
+// Load schemes from Excel
+async function loadSchemes() {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile('ApnaScheme_Phase1_50_Scheme_Template.xlsx');
+  const worksheet = workbook.getWorksheet(1);
+  
+  schemes = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header
+    
+    schemes.push({
+      SchemeName: row.getCell(1).value,
+      Category: row.getCell(2).value,
+      TargetState: row.getCell(3).value,
+      MinAge: row.getCell(4).value,
+      MaxAge: row.getCell(5).value,
+      IncomeLimit: row.getCell(6).value,
+      CasteEligibility: row.getCell(7).value,
+      EmploymentFilter: row.getCell(8).value,
+      BankAccountRequired: row.getCell(9).value === 'Yes',
+      AadhaarRequired: row.getCell(10).value === 'Yes',
+      ApplicationMode: row.getCell(11).value,
+      OfficialLink: row.getCell(12).value,
+      ActiveStatus: row.getCell(13).value
+    });
+  });
+}
+
+// Filter eligible schemes
+function getEligibleSchemes(userResponses) {
+  const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
+  
+  return schemes.filter(scheme => {
+    return scheme.ActiveStatus === 'Active' &&
+      (scheme.TargetState === 'All India' || scheme.TargetState === state) &&
+      age >= (scheme.MinAge || 0) &&
+      age <= (scheme.MaxAge || 100) &&
+      (!scheme.IncomeLimit || income <= scheme.IncomeLimit) &&
+      (scheme.CasteEligibility === 'All' || 
+       (caste === 'हाँ' && scheme.CasteEligibility.includes('SC/ST/OBC')) ||
+       (caste === 'Yes' && scheme.CasteEligibility.includes('SC/ST/OBC')) ||
+       (caste === 'होय' && scheme.CasteEligibility.includes('SC/ST/OBC'))) &&
+      (scheme.EmploymentFilter === 'All' || 
+       scheme.EmploymentFilter.toLowerCase() === occupation.toLowerCase()) &&
+      (!scheme.BankAccountRequired || hasBank === 'हाँ' || hasBank === 'Yes' || hasBank === 'होय') &&
+      (!scheme.AadhaarRequired || hasRation === 'हाँ' || hasRation === 'Yes' || hasRation === 'होय');
+  });
+}
+
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
-  return mapping?.[rawInput] || rawInput; // If not mapped, return as-is
+  return mapping?.[rawInput] || rawInput;
 };
 
 const sendMessage = async (phone, msg) => {
@@ -96,13 +147,12 @@ const getNextQuestion = (user) => {
   const q = QUESTIONS[lang];
   const res = user.responses;
 
-  if (res.length === 0) return q[0]; // Gender
-  if (res.length === 1) return q[1]; // Age
-  if (res.length === 2) return q[2]; // Occupation
+  if (res.length === 0) return q[0];
+  if (res.length === 1) return q[1];
+  if (res.length === 2) return q[2];
 
   let occupation = res[2]?.toLowerCase();
 
-  // Convert option number to labels
   if (occupation === '1') occupation = 'student';
   else if (occupation === '2') occupation = 'unemployed';
   else if (occupation === '3') occupation = 'employed';
@@ -112,20 +162,18 @@ const getNextQuestion = (user) => {
   const isUnemployed = ['unemployed', 'बेरोज़गार', 'बेरोजगार'].includes(occupation);
   const isEmployed = ['employed', 'नौकरीपेशा', 'नोकरी करता'].includes(occupation);
 
-  // If student/unemployed → skip income, go to bank question
-  if (res.length === 3 && (isStudent || isUnemployed)) return q[4]; // bank
-  if (res.length === 3 && isEmployed) return q[3]; // income
+  if (res.length === 3 && (isStudent || isUnemployed)) return q[4];
+  if (res.length === 3 && isEmployed) return q[3];
 
-  if (res.length === 4 && isEmployed) return q[4]; // bank
-  if (res.length === 4 && (isStudent || isUnemployed)) return q[5]; // ration
+  if (res.length === 4 && isEmployed) return q[4];
+  if (res.length === 4 && (isStudent || isUnemployed)) return q[5];
 
-  if (res.length === 5) return q[6]; // state
-  if (res.length === 6) return q[7]; // caste
-  if (res.length === 7) return null; // done
+  if (res.length === 5) return q[6];
+  if (res.length === 6) return q[7];
+  if (res.length === 7) return null;
 
   return null;
 };
-
 
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
@@ -155,28 +203,35 @@ app.post('/gupshup', async (req, res) => {
   if (next) {
     await sendMessage(phone, next);
   } else {
+    const eligibleSchemes = getEligibleSchemes(user.responses);
+    let schemeList = eligibleSchemes.slice(0, 5).map(s => `• ${s.SchemeName}`).join('\n');
+    
     let closingMessage = "";
-
     if (user.language === '1') {
-      closingMessage = 'धन्यवाद!\n\nआप सरकारी योजना के लिए पात्र हैं!\n\nयोजनाओं के नाम, अप्लाई करने का लिंक और पूरी जानकारी चाहिए?\nयह पूरी मदद सिर्फ ₹49 में मिलेगी।\n\nPay karo yahaan: https://rzp.io/rzp/razorpay49\n\nआपका भुगतान सुरक्षित है।\nपूरा scheme list तुरंत WhatsApp पर भेजा जाएगा।';
+      closingMessage = `धन्यवाद! आप ${eligibleSchemes.length} योजनाओं के लिए पात्र हैं:\n\n${schemeList}\n\nपूरी सूची और आवेदन लिंक के लिए ₹49 का भुगतान करें:\nhttps://rzp.io/rzp/razorpay49`;
     } else if (user.language === '2') {
-      closingMessage = `Thank you!\n\nYou are eligible for government schemes!\n\nWant full details? (Scheme names, application link)\nYou’ll get everything for just ₹49.\n\nMake Payment here: https://rzp.io/rzp/razorpay49\n\nSecure payment.\nFull scheme list will be sent instantly via WhatsApp.`;
+      closingMessage = `Thank you! You're eligible for ${eligibleSchemes.length} schemes:\n\n${schemeList}\n\nPay ₹49 for full list with application links:\nhttps://rzp.io/rzp/razorpay49`;
     } else if (user.language === '3') {
-      closingMessage = `आभार!\n\nतुम्ही सरकारी योजनांसाठी पात्र आहात!\n\nसंपूर्ण माहिती हवी आहे? (योजना नावे, अर्ज लिंक्स)\nसर्व माहिती फक्त ₹49 मध्ये मिळेल.\n\nपैसे भरा इथे: https://rzp.io/rzp/razorpay49\n\nतुमचं पेमेंट सुरक्षित आहे.\nसर्व योजना WhatsApp वर लगेच पाठवल्या जातील.`;
+      closingMessage = `आभार! तुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात:\n\n${schemeList}\n\nसंपूर्ण यादीसाठी ₹49 भरा:\nhttps://rzp.io/rzp/razorpay49`;
     }
 
     await sendMessage(phone, closingMessage);
-    delete userContext[phone]; // Reset after flow
+    delete userContext[phone];
   }
 
   res.sendStatus(200);
 });
 
 app.get('/', (req, res) => {
-  res.send('✅ ApnaScheme Bot is running with mapped responses and 3-language flow.');
+  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server live on port ${PORT}`);
+app.listen(PORT, async () => {
+  try {
+    await loadSchemes();
+    console.log(`🚀 Server live on port ${PORT} | ${schemes.length} schemes loaded`);
+  } catch (err) {
+    console.error('Failed to load schemes:', err);
+    process.exit(1);
+  }
 });
-
