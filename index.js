@@ -334,10 +334,6 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-
-// ==============================================
-// Step 1: Add Razorpay Webhook Route (PUT THIS RIGHT HERE)
-// ==============================================
 app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     // 1. Verify Webhook Signature
@@ -367,10 +363,42 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
     const user = userContext[userPhone];
     if (!user) return res.status(404).send('User not found');
 
-    // 5. Prepare WhatsApp Message (same as earlier example)
-    // ... [use the message formatting code from previous examples] ...
+    // 5. Get eligible schemes and format message
+    const eligibleSchemes = getEligibleSchemes(user.responses);
+    const lang = user.language || '2'; // Default to English
 
-    await sendMessage(userPhone, message);
+    let message;
+    if (lang === '1') { // Hindi
+      message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 रसीद ID: ${payment.id}`;
+    } 
+    else if (lang === '3') { // Marathi
+      message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 पावती ID: ${payment.id}`;
+    } 
+    else { // English (default)
+      message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 Receipt ID: ${payment.id}`;
+    }
+
+    // 6. Send WhatsApp message
+    try {
+      await sendMessage(userPhone, message);
+      console.log(`📩 Sent schemes to ${userPhone}`);
+    } catch (err) {
+      console.error('Failed to send WhatsApp:', err);
+      throw err;
+    }
+
     delete userContext[userPhone]; // Cleanup
     res.status(200).send('Success');
   } catch (error) {
@@ -378,7 +406,6 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (r
     res.status(500).send('Server error');
   }
 });
-
 // ==============================================
 // Step 2: Make sure this is your VERY LAST LINE
 // ==============================================
