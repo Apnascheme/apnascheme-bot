@@ -107,84 +107,88 @@ function getEligibleSchemes(userResponses) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
-    // 1. Basic active status check
     if (scheme.ActiveStatus !== 'Active') return false;
 
-    // 2. Strict gender filtering for women-specific schemes
-    const womenSchemes = [
-      'Pradhan Mantri Matru Vandana Yojana',
-      'Ujjwala',
-      'Sukanya Samriddhi',
-      'Ladli Lakshmi',
-      'Bhagyashree'
-    ];
-    if (womenSchemes.some(name => scheme.SchemeName.includes(name)) && 
-        !['female', 'महिला', 'स्त्री', 'woman', 'girl', 'महिला', 'स्त्री'].includes(gender.toLowerCase())) {
-      return false;
-    }
-
-    // 3. Strict disability filtering
-    const disabilitySchemes = [
-      'Disability',
-      'Divyang',
-      'Viklang',
-      'UDID',
-      'ADIP'
-    ];
-    if (disabilitySchemes.some(name => scheme.SchemeName.includes(name)) && 
-        !(occupation && occupation.toLowerCase().includes('disabled'))) {
-      return false;
-    }
-
-    // 4. Occupation-specific checks
-    if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
-      const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
-      const userOccupation = occupation.toLowerCase();
-      
-      if (schemeOccupation === 'student' && !userOccupation.includes('student')) return false;
-      if (schemeOccupation === 'farmer' && !userOccupation.includes('farmer')) return false;
-      if (schemeOccupation === 'unemployed' && !userOccupation.includes('unemployed')) return false;
-    }
-
-    // 5. State check
+    const genderLower = gender?.toLowerCase() || '';
+    const occupationLower = occupation?.toLowerCase() || '';
     const userState = state?.toLowerCase()?.trim() || '';
     const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
+
+    // 🚫 1. Gender-specific schemes
+    const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
+    if (
+      womenSchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)
+    ) {
+      return false;
+    }
+
+    // 🚫 2. Disability-specific schemes
+    const disabilitySchemes = ['disability', 'divyang', 'viklang', 'udid', 'adip'];
+    if (
+      disabilitySchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      !occupationLower.includes('disabled')
+    ) {
+      return false;
+    }
+
+    // 🚫 3. Maternity / health schemes filtering
+    const maternitySchemes = ['janani', 'matru', 'maternity'];
+    if (
+      maternitySchemes.some(word => scheme.SchemeName.toLowerCase().includes(word)) &&
+      (
+        genderLower !== 'female' ||
+        age < 13 || age > 50
+      )
+    ) {
+      return false;
+    }
+
+    // 🚫 4. Occupation-specific filtering
+    if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
+      const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
+      if (!occupationLower.includes(schemeOccupation)) {
+        return false;
+      }
+    }
+
+    // ✅ 5. State filtering
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // 6. Age check
+    // ✅ 6. Age range filtering
     const minAge = scheme.MinAge || 0;
     const maxAge = scheme.MaxAge || 100;
     if (age < minAge || age > maxAge) return false;
 
-    // 7. Income check
+    // ✅ 7. Income check
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // 8. Caste check
+    // ✅ 8. Caste filtering
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       const userCaste = caste?.toLowerCase()?.trim() || '';
-      
       if (!schemeCastes.includes(userCaste)) {
         if (userCaste === 'general' && !schemeCastes.includes('general')) return false;
         if (userCaste === 'no' && !schemeCastes.includes('general')) return false;
       }
     }
 
-    // 9. Bank account check
+    // ✅ 9. Bank account required
     if (scheme.BankAccountRequired) {
-      const hasBankLower = hasBank?.toLowerCase() || '';
+      const hasBankLower = hasBank?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
-    // 10. Aadhaar check
+    // ✅ 10. Aadhaar / Ration required
     if (scheme.AadhaarRequired) {
-      const hasRationLower = hasRation?.toLowerCase() || '';
+      const hasRationLower = hasRation?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
     }
 
     return true;
   });
 }
+
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
   return mapping?.[rawInput] || rawInput;
