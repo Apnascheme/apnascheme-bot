@@ -335,28 +335,29 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-   try {
+  try {
     // ===== ADD THIS BLOCK AT THE START =====
     if (process.env.NODE_ENV !== 'production') {
       console.warn("⚠️ Skipping signature verification in development");
     } else {
-    const razorpaySignature = req.headers['x-razorpay-signature'];
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('hex');
+      const razorpaySignature = req.headers['x-razorpay-signature'];
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(req.body)
+        .digest('hex');
 
-    if (expectedSignature !== razorpaySignature) {
-      console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
-      return res.status(401).send('Invalid signature');
+      if (expectedSignature !== razorpaySignature) {
+        console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
+        return res.status(401).send('Invalid signature');
+      }
     }
 
     // 3. Parse JSON payload SAFELY
     let payload;
     try {
-      payload = JSON.parse(rawBody);
+      payload = JSON.parse(req.body.toString());
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       return res.status(400).send('Invalid JSON payload');
