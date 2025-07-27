@@ -281,7 +281,7 @@ app.post('/gupshup', async (req, res) => {
     else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
     else if (msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
     else {
-      await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein (1, 2, 3):\n1. हिंदी\n2. English\n3. मराठी");
+      await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
     }
 
