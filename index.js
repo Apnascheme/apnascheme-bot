@@ -334,51 +334,54 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
+
 app.post('/payment-webhook', express.raw({ type: '*/*' }), async (req, res) => {
   try {
-    // Store the raw body for signature verification
     const rawBody = req.body.toString('utf8');
     
+    // Skip signature verification in test mode
     if (process.env.NODE_ENV !== 'production' || req.headers['x-razorpay-signature'] === 'test_signature') {
       console.warn("⚠️ Skipping signature verification in test mode");
     } else {
       const razorpaySignature = req.headers['x-razorpay-signature'];
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
       const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
         .update(rawBody, 'utf8')
         .digest('hex');
 
       if (expectedSignature !== razorpaySignature) {
-        console.error(`Signature mismatch!\nExpected: ${expectedSignature}\nReceived: ${razorpaySignature}`);
+        console.error('Signature mismatch!');
         return res.status(401).send('Invalid signature');
       }
     }
 
-    // Parse JSON payload
-    let payload;
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      return res.status(400).send('Invalid JSON payload');
-    }
+    const payload = JSON.parse(rawBody);
+    console.log('Payment payload:', JSON.stringify(payload, null, 2)); // Debug log
 
-    // Extract payment data with null checks
-    const payment = payload?.payload?.payment?.entity;
+    // Extract payment data - handle both new and legacy webhook formats
+    const payment = payload.payload?.payment?.entity || payload.payment?.entity || payload;
     if (!payment) {
+      console.error('Invalid payment data:', payload);
       return res.status(400).send('Invalid payment data');
     }
 
-    // Process payment
-    const userPhone = payment.notes?.phone;
+    // Extract phone number from notes or metadata
+    const userPhone = payment.notes?.phone || 
+                     payment.metadata?.phone || 
+                     (payload.payload?.payment?.entity?.notes?.phone);
+    
     if (!userPhone) {
+      console.error('Phone number missing in payment:', payment);
       return res.status(400).send('Phone number missing');
     }
 
+    console.log('Processing payment for phone:', userPhone); // Debug log
+
+    // Find user in context
     const user = userContext[userPhone];
     if (!user) {
+      console.error('User not found for phone:', userPhone);
       return res.status(404).send('User not found');
     }
     // 5. Get eligible schemes and format message
