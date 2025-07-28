@@ -335,15 +335,15 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.post('/payment-webhook',express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/payment-webhook', express.raw({ type: 'application/json' }), (req, res) => {
   try {
     const rawBody = req.body.toString('utf8');
-    
-    // Skip signature verification in test mode
-    if (process.env.NODE_ENV !== 'production' || req.headers['x-razorpay-signature'] === 'test_signature') {
-      console.warn("⚠️ Skipping signature verification in test mode");
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+
+    // For debugging in test mode
+    if (process.env.NODE_ENV !== 'production' && razorpaySignature === 'test_signature') {
+      console.warn('⚠️ Skipping signature verification in test mode');
     } else {
-      const razorpaySignature = req.headers['x-razorpay-signature'];
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
       const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
@@ -351,39 +351,27 @@ app.post('/payment-webhook',express.raw({ type: 'application/json' }), (req, res
         .digest('hex');
 
       if (expectedSignature !== razorpaySignature) {
-        console.error('Signature mismatch!');
+        console.error('❌ Invalid signature');
         return res.status(401).send('Invalid signature');
       }
     }
 
     const payload = JSON.parse(rawBody);
-    console.log('Payment payload:', JSON.stringify(payload, null, 2)); // Debug log
-
-    // Extract payment data - handle both new and legacy webhook formats
     const payment = payload.payload?.payment?.entity || payload.payment?.entity || payload;
-    if (!payment) {
-      console.error('Invalid payment data:', payload);
-      return res.status(400).send('Invalid payment data');
-    }
 
-    // Extract phone number from notes or metadata
-    const userPhone = payment.notes?.phone || 
-                     payment.metadata?.phone || 
-                     (payload.payload?.payment?.entity?.notes?.phone);
-    
+    const userPhone = payment.notes?.phone || payment.metadata?.phone;
     if (!userPhone) {
-      console.error('Phone number missing in payment:', payment);
+      console.error('❌ Phone number missing');
       return res.status(400).send('Phone number missing');
     }
 
-    console.log('Processing payment for phone:', userPhone); // Debug log
-
-    // Find user in context
-    const user = userContext[userPhone];
-    if (!user) {
-      console.error('User not found for phone:', userPhone);
-      return res.status(404).send('User not found');
-    }
+    console.log('✅ Payment received for phone:', userPhone);
+    res.status(200).send('Webhook processed');
+  } catch (err) {
+    console.error('❌ Error in webhook:', err);
+    res.status(500).send('Internal error');
+  }
+});
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
