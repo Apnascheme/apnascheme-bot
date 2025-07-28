@@ -335,7 +335,7 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.post('/payment-webhook', express.raw({ type: '*/*' }), async (req, res) => {
+app.post('/payment-webhook',express.raw({ type: 'application/json' }), (req, res) => {
   try {
     const rawBody = req.body.toString('utf8');
     
