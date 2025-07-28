@@ -335,7 +335,7 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.post('/payment-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const rawBody = req.body.toString('utf8');
     const razorpaySignature = req.headers['x-razorpay-signature'];
@@ -365,12 +365,12 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), (req, re
       return res.status(400).send('Phone number missing');
     }
 
-    console.log('✅ Payment received for phone:', userPhone);
-    res.status(200).send('Webhook processed');
-  } catch (err) {
-    console.error('❌ Error in webhook:', err);
-    res.status(500).send('Internal error');
-  }
+    const user = userContext[userPhone];
+    if (!user) {
+      console.error('❌ User not found');
+      return res.status(404).send('User not found');
+    }
+
 
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
