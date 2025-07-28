@@ -371,7 +371,7 @@ app.post('/payment-webhook', express.raw({ type: 'application/json' }), (req, re
     console.error('❌ Error in webhook:', err);
     res.status(500).send('Internal error');
   }
-);
+
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
