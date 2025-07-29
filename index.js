@@ -335,41 +335,31 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.post('/payment-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/payment-webhook', async (req, res) => {
   try {
-    const rawBody = req.body.toString('utf8');
+    const rawBody = req.body;
+    const bodyString = rawBody.toString();
     const razorpaySignature = req.headers['x-razorpay-signature'];
 
-    // For debugging in test mode
-    if (process.env.NODE_ENV !== 'production' && razorpaySignature === 'test_signature') {
-      console.warn('⚠️ Skipping signature verification in test mode');
-    } else {
-      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody, 'utf8')
-        .digest('hex');
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(bodyString)
+      .digest('hex');
 
-      if (expectedSignature !== razorpaySignature) {
-        console.error('❌ Invalid signature');
-        return res.status(401).send('Invalid signature');
-      }
+    if (expectedSignature !== razorpaySignature) {
+      console.error('❌ Invalid signature');
+      return res.status(401).send('Invalid signature');
     }
 
-    const payload = JSON.parse(rawBody);
-    const payment = payload.payload?.payment?.entity || payload.payment?.entity || payload;
+    const payload = JSON.parse(bodyString);
+    const payment = payload.payload?.payment?.entity;
 
-    const userPhone = payment.notes?.phone || payment.metadata?.phone;
-    if (!userPhone) {
-      console.error('❌ Phone number missing');
-      return res.status(400).send('Phone number missing');
+    if (!payment || payment.status !== 'captured') {
+      return res.status(400).send('Payment not captured');
     }
 
-    const user = userContext[userPhone];
-    if (!user) {
-      console.error('❌ User not found');
-      return res.status(404).send('User not found');
-    }
+    // ... your existing logic here ...
 
 
     // 5. Get eligible schemes and format message
