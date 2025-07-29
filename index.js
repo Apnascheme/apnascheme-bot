@@ -29,12 +29,12 @@ const QUESTIONS = {
   ],
   2: [
     "What is your gender?\n1. Male\n2. Female\n3. Other",
-    "What is your age? (Enter number eg. 18)",
-    "What do you do?\n1. Student\n2. Unemployed\n3. Employed\n4.Disabled",
-    "What is your Household yearly income? (eg. 120000)",
+    "What is your age?\n (Enter number eg. 18)",
+    "What do you do?\n1. Student\n2. Unemployed\n3. Employed\n4. Disabled",
+    "What is your Household yearly income?\n (eg. 120000)",
     "Do you have a bank account?\n1. Yes\n2. No",
     "Do you have a ration card?\n1. Yes\n2. No",
-    "Which state do you live in? (eg. Maharashtra)",
+    "Which state do you live in?\n (eg. Maharashtra)",
     "Do you belong to SC/ST/OBC/EWS category?\n1. Yes\n2. No"
   ],
   3: [
@@ -303,25 +303,25 @@ app.post('/gupshup', async (req, res) => {
     
     let closingMessage = "";
     if (user.language === '1') {
-        closingMessage = ` ज़बरदस्त खबर! आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+        closingMessage = ` ज़बरदस्त खबर! \nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
                       + ` सिर्फ ₹49 में पाएं:\n`
                       + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
                       + ` सीधे आवेदन करने के लिंक\n\n`
-                      + ` अभी पेमेंट करें: https://rzp.io/rzp/razorpay49\n\n`
+                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + ` ऑफर सीमित समय के लिए!`;
     } else if (user.language === '2') {
-        closingMessage = ` Amazing News! You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+        closingMessage = ` Amazing News! \nYou're eligible for ${eligibleSchemes.length} government schemes!\n\n`
                       + ` For just ₹49 get:\n`
                       + ` Complete list of all schemes for you\n`
                       + ` Direct application links\n\n`
-                      + ` Make payment now: https://rzp.io/rzp/razorpay49\n\n`
+                      + ` Make payment now: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + `Limited time offer!`;
     } else if (user.language === '3') {
-        closingMessage = ` जबरदस्त बातम्या! तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+        closingMessage = ` जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
                       + ` फक्त ₹49 मध्ये मिळवा:\n`
                       + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
                       + ` थेट अर्ज करण्याचे लिंक\n\n`
-                      + ` आत्ताच पेमेंट करा: https://rzp.io/rzp/razorpay49\n\n`
+                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + ` मर्यादित वेळ ऑफर!`;
     }
 
