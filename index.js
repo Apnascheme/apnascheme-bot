@@ -416,6 +416,46 @@ app.post('/payment-webhook', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+// Add this at the end of your file (before app.listen)
+app.get('/test-payment', async (req, res) => {
+  const testPhone = "919876543210"; // 👈 Replace with your test WhatsApp number
+  
+  // 1. First, simulate a user completing the questionnaire
+  userContext[testPhone] = {
+    language: '2', // English (use '1' for Hindi, '3' for Marathi)
+    responses: [
+      'Female',      // Gender
+      '25',          // Age
+      'Student',     // Occupation
+      '150000',      // Income
+      'Yes',         // Has bank account
+      'Yes',         // Has ration card
+      'Maharashtra', // State
+      'No'           // Caste
+    ]
+  };
+
+  // 2. Mock a Razorpay payment payload
+  const mockPayment = {
+    payload: {
+      payment: {
+        entity: {
+          status: "captured",
+          id: "pay_test123",
+          notes: { phone: testPhone } // Must match userContext key
+        }
+      }
+    }
+  };
+
+  // 3. Call the webhook handler manually
+  console.log("📤 Simulating payment webhook...");
+  req.body = mockPayment;
+  req.headers = { 'x-razorpay-signature': 'test_signature' };
+  await req.post('/payment-webhook'); // Triggers your webhook logic
+  
+  res.send("Test payment triggered! Check WhatsApp for schemes.");
+});
 // ==============================================
 // Step 2: Make sure this is your VERY LAST LINE
 // ==============================================
