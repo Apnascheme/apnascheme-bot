@@ -370,7 +370,7 @@ app.post('/payment-webhook', async (req, res) => {
       console.error('User session expired for:', userPhone);
       return res.status(400).send('User session expired');
     }
-your existing logic here ...
+
 
 
     // 5. Get eligible schemes and format message
