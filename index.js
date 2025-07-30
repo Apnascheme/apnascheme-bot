@@ -418,7 +418,7 @@ app.post('/payment-webhook', async (req, res) => {
 });
 // Add this at the end of your file (before app.listen)
 app.get('/test-payment', async (req, res) => {
-  const testPhone = "919876543210"; // 👈 Replace with your test WhatsApp number
+  const testPhone = "919321875559"; // 👈 Replace with your test WhatsApp number
   
   // 1. First, simulate a user completing the questionnaire
   userContext[testPhone] = {
