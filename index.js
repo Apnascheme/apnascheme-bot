@@ -13,10 +13,9 @@ const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
 const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
 const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 
-const userContext = {}; // Stores user responses
-let schemes = []; // Loaded schemes from Excel
+const userContext = {}; // Temporary in-memory store
+let schemes = []; // Store loaded schemes
 
-// Question sets for 3 languages
 const QUESTIONS = {
   1: [
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
@@ -50,7 +49,6 @@ const QUESTIONS = {
   ]
 };
 
-// Answer mappings for each language
 const OPTION_MAPPINGS = {
   1: {
     0: { '1': 'पुरुष', '2': 'महिला', '3': 'अन्य' },
@@ -103,8 +101,9 @@ async function loadSchemes() {
   });
 }
 
-// Filter eligible schemes
-function getEligibleSchemes(userResponses) {
+// Filter eligible schemes (updated version)
+// Filter eligible schemes (updated version)
+function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
@@ -116,30 +115,64 @@ function getEligibleSchemes(userResponses) {
     const userState = state?.toLowerCase()?.trim() || '';
     const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
 
-    // Gender-specific schemes
+    // 🚫 1. Gender-specific schemes
     const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
-    if (womenSchemes.some(word => schemeNameLower.includes(word))) {
-      if (!['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)) return false;
+    if (
+      womenSchemes.some(word => schemeNameLower.includes(word)) &&
+      !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)
+    ) {
+      return false;
     }
 
-    // Disability schemes
+    // 🚫 2. Disability-specific schemes
     const disabilitySchemes = ['disability', 'divyang', 'viklang', 'udid', 'adip'];
-    if (disabilitySchemes.some(word => schemeNameLower.includes(word))) {
-      if (!occupationLower.includes('disabled')) return false;
+    if (
+      disabilitySchemes.some(word => schemeNameLower.includes(word)) &&
+      !occupationLower.includes('disabled')
+    ) {
+      return false;
     }
 
-    // State filter
+    // 🚫 3. Maternity / health schemes filtering
+    const maternitySchemes = ['janani', 'matru', 'maternity'];
+    if (
+      maternitySchemes.some(word => schemeNameLower.includes(word)) &&
+      (
+        genderLower !== 'female' ||
+        age < 13 || age > 50
+      )
+    ) {
+      return false;
+    }
+
+    // 🚫 4. Rashtriya Arogya Nidhi check (only if critical illness)
+    if (
+      schemeNameLower.includes('rashtriya arogya nidhi') &&
+      !hasCriticalIllness
+    ) {
+      return false;
+    }
+
+    // 🚫 5. Occupation-specific filtering
+    if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
+      const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
+      if (!occupationLower.includes(schemeOccupation)) {
+        return false;
+      }
+    }
+
+    // ✅ 6. State filtering
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // Age filter
+    // ✅ 7. Age range filtering
     const minAge = scheme.MinAge || 0;
     const maxAge = scheme.MaxAge || 100;
     if (age < minAge || age > maxAge) return false;
 
-    // Income filter
+    // ✅ 8. Income check
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // Caste filter
+    // ✅ 9. Caste filtering
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       const userCaste = caste?.toLowerCase()?.trim() || '';
@@ -149,13 +182,13 @@ function getEligibleSchemes(userResponses) {
       }
     }
 
-    // Bank account required
+    // ✅ 10. Bank account required
     if (scheme.BankAccountRequired) {
       const hasBankLower = hasBank?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
-    // Aadhaar required
+    // ✅ 11. Aadhaar / Ration required
     if (scheme.AadhaarRequired) {
       const hasRationLower = hasRation?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
@@ -165,13 +198,12 @@ function getEligibleSchemes(userResponses) {
   });
 }
 
-// Map answers to human-readable format
+
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
   return mapping?.[rawInput] || rawInput;
 };
 
-// Send WhatsApp message via Gupshup
 const sendMessage = async (phone, msg) => {
   await axios.post(BASE_URL, null, {
     params: {
@@ -188,7 +220,6 @@ const sendMessage = async (phone, msg) => {
   });
 };
 
-// Determine next question based on current responses
 const getNextQuestion = (user) => {
   const lang = user.language;
   const q = QUESTIONS[lang];
@@ -197,31 +228,60 @@ const getNextQuestion = (user) => {
   if (res.length === 0) return q[0]; // Gender
   if (res.length === 1) return q[1]; // Age
   if (res.length === 2) return q[2]; // Occupation
+
+  let occupation = res[2]?.toLowerCase();
+
+  // Convert option numbers to labels first
+  if (lang === '1') { // Hindi
+    if (occupation === '1') occupation = 'छात्र';
+    else if (occupation === '2') occupation = 'बेरोज़गार';
+    else if (occupation === '3') occupation = 'नौकरीपेशा';
+    else if (occupation === '4') occupation = 'अन्य';
+  } else if (lang === '2') { // English
+    if (occupation === '1') occupation = 'student';
+    else if (occupation === '2') occupation = 'unemployed';
+    else if (occupation === '3') occupation = 'employed';
+    else if (occupation === '4') occupation = 'other';
+  } else if (lang === '3') { // Marathi
+    if (occupation === '1') occupation = 'विद्यार्थी';
+    else if (occupation === '2') occupation = 'बेरोजगार';
+    else if (occupation === '3') occupation = 'नोकरी करता';
+    else if (occupation === '4') occupation = 'इतर';
+  }
+
+  const isStudent = ['student', 'छात्र', 'विद्यार्थी'].includes(occupation);
+  const isUnemployed = ['unemployed', 'बेरोज़गार', 'बेरोजगार'].includes(occupation);
+  const isEmployed = ['employed', 'नौकरीपेशा', 'नोकरी करता'].includes(occupation);
+
+  // Always ask income question (q[3]) regardless of occupation
   if (res.length === 3) return q[3]; // Income
+  
+  // Then proceed with bank account question
   if (res.length === 4) return q[4]; // Bank account
+  
+  // Then ration card
   if (res.length === 5) return q[5]; // Ration card
+  
+  // Then state
   if (res.length === 6) return q[6]; // State
+  
+  // Finally caste
   if (res.length === 7) return q[7]; // Caste
+  
   return null; // Done
 };
 
-// WhatsApp message handler
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
   const phone = data?.sender?.phone;
   const msg = data?.payload?.text?.toLowerCase().trim();
 
   if (!userContext[phone]) {
-    // Language selection
     if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
     else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
     else if (msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
     else {
-      await sendMessage(phone, 
-        "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\n" +
-        "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai.\n\n" +
-        "🗣️ Apni bhaasha chunein:\n1. हिंदी\n2. English\n3. मराठी"
-      );
+      await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
     }
 
@@ -230,7 +290,6 @@ app.post('/gupshup', async (req, res) => {
     return res.sendStatus(200);
   }
 
-  // Process user response
   const user = userContext[phone];
   const qIndex = user.responses.length;
   const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
@@ -239,36 +298,42 @@ app.post('/gupshup', async (req, res) => {
   const next = getNextQuestion(user);
   if (next) {
     await sendMessage(phone, next);
-  } else {
-    // Generate payment link with phone number in metadata
-    const paymentLink = `https://rzp.io/rzp/razorpay49?notes[phone]=${encodeURIComponent(phone)}`;
+ } else {
+    const eligibleSchemes = getEligibleSchemes(user.responses);
     
-    let closingMessage;
-    if (user.language === '1') { // Hindi
-      closingMessage = `ज़बरदस्त खबर! आप ${eligibleSchemes.length} योजनाओं के लिए पात्र हैं!\n\n` +
-        `सिर्फ ₹49 में पाएं:\n✔ पूरी योजना सूची\n✔ आवेदन लिंक\n\n` +
-        `अभी पेमेंट करें:\n${paymentLink}\n\n` +
-        `ऑफर सीमित समय के लिए!`;
-    } 
-    else if (user.language === '3') { // Marathi
-      closingMessage = `जबरदस्त बातम्या! तुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात!\n\n` +
-        `फक्त ₹49 मध्ये मिळवा:\n✔ संपूर्ण योजना यादी\n✔ अर्ज लिंक\n\n` +
-        `आत्ताच पेमेंट करा:\n${paymentLink}\n\n` +
-        `मर्यादित वेळ ऑफर!`;
-    } 
-    else { // English (default)
-      closingMessage = `Amazing News! You're eligible for ${eligibleSchemes.length} schemes!\n\n` +
-        `For just ₹49 get:\n✔ Full scheme list\n✔ Application links\n\n` +
-        `Make payment now:\n${paymentLink}\n\n` +
-        `Limited time offer!`;
+    let closingMessage = "";
+    if (user.language === '1') {
+        closingMessage = ` ज़बरदस्त खबर! \nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+                      + ` सिर्फ ₹49 में पाएं:\n`
+                      + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
+                      + ` सीधे आवेदन करने के लिंक\n\n`
+                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme\n\n`
+                      + ` ऑफर सीमित समय के लिए!`;
+    } else if (user.language === '2') {
+        closingMessage = ` Amazing News! \nYou're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+                      + ` For just ₹49 get:\n`
+                      + ` Complete list of all schemes for you\n`
+                      + ` Direct application links\n\n`
+                      + ` Make payment now: \nhttps://rzp.io/rzp/apnascheme\n\n`
+                      + `Limited time offer!`;
+    } else if (user.language === '3') {
+        closingMessage = ` जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+                      + ` फक्त ₹49 मध्ये मिळवा:\n`
+                      + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
+                      + ` थेट अर्ज करण्याचे लिंक\n\n`
+                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme\n\n`
+                      + ` मर्यादित वेळ ऑफर!`;
     }
 
     await sendMessage(phone, closingMessage);
-  }
+    delete userContext[phone];
+}
   res.sendStatus(200);
 });
 
-// Razorpay payment webhook
+app.get('/', (req, res) => {
+  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
+});
 app.post('/payment-webhook', async (req, res) => {
   try {
     const rawBody = req.body;
@@ -305,52 +370,59 @@ app.post('/payment-webhook', async (req, res) => {
       console.error('User session expired for:', userPhone);
       return res.status(400).send('User session expired');
     }
+your existing logic here ...
 
-    // Get eligible schemes
+
+    // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
-    
-    // Format response message
+    const lang = user.language || '2'; // Default to English
+
     let message;
-    if (user.language === '1') { // Hindi
+    if (lang === '1') { // Hindi
       message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `📌 ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'लिंक उपलब्ध नहीं'}\n\n`;
+        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 रसीद ID: ${payment.id}`;
     } 
-    else if (user.language === '3') { // Marathi
+    else if (lang === '3') { // Marathi
       message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `📌 ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'लिंक उपलब्ध नाही'}\n\n`;
+        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 पावती ID: ${payment.id}`;
     } 
-    else { // English
+    else { // English (default)
       message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `📌 ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'Link not available'}\n\n`;
+        message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 Receipt ID: ${payment.id}`;
     }
 
-    // Send WhatsApp message
-    await sendMessage(userPhone, message);
-    console.log(`📩 Sent schemes to ${userPhone}`);
-    
-    // Cleanup
-    delete userContext[userPhone];
+    // 6. Send WhatsApp message
+    try {
+      await sendMessage(userPhone, message);
+      console.log(`📩 Sent schemes to ${userPhone}`);
+    } catch (err) {
+      console.error('Failed to send WhatsApp:', err);
+      throw err;
+    }
+
+    delete userContext[userPhone]; // Cleanup
     res.status(200).send('Success');
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).send('Server error');
   }
 });
-
-// Start server
+// ==============================================
+// Step 2: Make sure this is your VERY LAST LINE
+// ==============================================
 app.listen(PORT, async () => {
   try {
     await loadSchemes();
-    console.log(`🚀 Server running on port ${PORT} | ${schemes.length} schemes loaded`);
+    console.log(`🚀 Server live on port ${PORT} | ${schemes.length} schemes loaded`);
   } catch (err) {
     console.error('Failed to load schemes:', err);
     process.exit(1);
