@@ -342,6 +342,7 @@ app.post('/payment-webhook', async (req, res) => {
 
     // Verify signature
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    console.log("Received signature:", req.headers['x-razorpay-signature']);
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(bodyString)
