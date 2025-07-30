@@ -118,7 +118,7 @@ function getEligibleSchemes(userResponses) {
 
     // Gender-specific schemes
     const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
-    if (womenSchemes.some(word => schemeNameLower.includes(word)) {
+    if (womenSchemes.some(word => schemeNameLower.includes(word))) {
       if (!['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)) return false;
     }
 
