@@ -334,44 +334,42 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-app.post('/payment-webhook', async (req, res) => {
-  try {
-    const rawBody = req.body;
-    const bodyString = JSON.stringify(rawBody);
-    const razorpaySignature = req.headers['x-razorpay-signature'];
 
-    // Verify signature
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    console.log("Received signature:", req.headers['x-razorpay-signature']);
+  app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
+    
+
+  app.post('/razorpay-webhook', async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    const body = JSON.stringify(req.body);
+
     const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(bodyString)
+      .createHmac('sha256', secret)
+      .update(body)
       .digest('hex');
 
-    if (expectedSignature !== razorpaySignature) {
-      console.error('❌ Invalid signature');
-      return res.status(401).send('Invalid signature');
+    if (signature !== expectedSignature) {
+      console.warn('⚠️ Invalid Razorpay signature');
+      return res.status(401).send('Unauthorized');
     }
 
-    const payment = rawBody.payload?.payment?.entity;
+    const payload = req.body;
+    const payment = payload?.payload?.payment?.entity;
+
     if (!payment || payment.status !== 'captured') {
-      return res.status(400).send('Payment not captured');
+      return res.status(400).send('Not a captured payment');
     }
 
-    // Get phone from payment notes
-    const userPhone = payment.notes?.phone;
-    if (!userPhone) {
-      console.error('No phone number in payment notes');
-      return res.status(400).send('Phone number missing');
+    // 🔥 Extract phone number from notes or custom field in Razorpay payment
+    const userPhone = payment.notes?.phone; // You must pass phone in Razorpay notes during checkout
+
+    if (!userPhone || !userContext[userPhone]) {
+      console.warn('User context not found for phone:', userPhone);
+      return res.status(404).send('User not found');
     }
 
-    // Get user context
     const user = userContext[userPhone];
-    if (!user) {
-      console.error('User session expired for:', userPhone);
-      return res.status(400).send('User session expired');
-    }
-
 
 
     // 5. Get eligible schemes and format message
