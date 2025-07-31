@@ -18,7 +18,14 @@
                     + `Limited time offer!`;
     } else if (user.language === '3') {
       closingMessage = `जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
-                    + `फक्त ₹49import express from 'express';
+                    + `फक्त ₹49 मध्ये मिळवा:\n`
+                      + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
+                      + ` थेट अर्ज करण्याचे लिंक\n\n`
+                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme\n\n`
+                      + ` मर्यादित वेळ ऑफर!`;
+    }
+
+import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
