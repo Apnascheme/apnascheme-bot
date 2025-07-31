@@ -229,6 +229,8 @@ const mapAnswer = (lang, qIndex, rawInput) => {
 // Enhanced sendMessage function with proper logging
 const sendMessage = async (phone, msg) => {
   try {
+  const phone = req.body.phone; // or wherever it comes from
+
     console.log(`[WHATSAPP ATTEMPT] To: ${phone}, Message Length: ${msg.length} chars`);
     
     const encodedMessage = encodeURIComponent(msg);
