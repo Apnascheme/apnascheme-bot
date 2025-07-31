@@ -352,18 +352,19 @@ app.use('/razorpay-webhook', async (req, res, next) => {
   }
 });
 
-// Then parse JSON after raw body is captured
-app.use('/razorpay-webhook', express.json());
+
+app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
 const userContext = {}; // assuming you define this elsewhere
 
-app.post('/razorpay-webhook', (req, res) => {
+app.post('/razorpay-webhook', async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   const signature = req.headers['x-razorpay-signature'];
+  const body = req.body; // this is a Buffer now
 
   const expectedSignature = crypto
     .createHmac('sha256', secret)
-    .update(req.rawBody)
+    .update(body)
     .digest('hex');
 
   if (signature !== expectedSignature) {
@@ -371,7 +372,7 @@ app.post('/razorpay-webhook', (req, res) => {
     return res.status(401).send('Unauthorized');
   }
 
-  const payload = req.body;
+  const payload = JSON.parse(body.toString('utf8')); // parse after verifying signature
   const payment = payload?.payload?.payment?.entity;
 
   if (!payment || payment.status !== 'captured') {
@@ -385,7 +386,9 @@ app.post('/razorpay-webhook', (req, res) => {
   }
 
   const user = userContext[userPhone];
-  // Your logic here...
+  // ...rest of your logic
+
+
 
   return res.status(200).send('Webhook processed');
 });
