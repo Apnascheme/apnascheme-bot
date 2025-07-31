@@ -1,4 +1,24 @@
-import express from 'express';
+// Use your server's payment endpoint instead of external Razorpay link
+    const paymentUrl = `${req.protocol}://${req.get('host')}/payment?phone=${phone}`;
+    
+    let closingMessage = "";
+    if (user.language === '1') {
+      closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+                    + `सिर्फ ₹49 में पाएं:\n`
+                    + `आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
+                    + `सीधे आवेदन करने के लिंक\n\n`
+                    + `अभी पेमेंट करें: \n${paymentUrl}\n\n`
+                    + `ऑफर सीमित समय के लिए!`;
+    } else if (user.language === '2') {
+      closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+                    + `For just ₹49 get:\n`
+                    + `Complete list of all schemes\n`
+                    + `Direct application links\n\n`
+                    + `Make payment now: \n${paymentUrl}\n\n`
+                    + `Limited time offer!`;
+    } else if (user.language === '3') {
+      closingMessage = `जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+                    + `फक्त ₹49import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
@@ -390,12 +410,21 @@ app.post('/payment-success', async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, phone } = req.body;
     
+    console.log(`[PAYMENT SUCCESS REQUEST] Full body:`, JSON.stringify(req.body, null, 2));
     console.log(`[PAYMENT SUCCESS] Payment ID: ${razorpay_payment_id}, Order ID: ${razorpay_order_id}, Phone: ${phone}`);
     
     // Validate input
     if (!razorpay_payment_id || !phone) {
       console.error(`[PAYMENT ERROR] Missing payment details - Payment ID: ${razorpay_payment_id}, Phone: ${phone}`);
-      return res.status(400).json({ error: 'Missing payment details' });
+      console.error(`[PAYMENT ERROR] Full request body:`, req.body);
+      return res.status(400).json({ 
+        error: 'Missing payment details',
+        received: {
+          payment_id: razorpay_payment_id,
+          phone: phone,
+          full_body: req.body
+        }
+      });
     }
 
     // Check if user context exists
@@ -519,6 +548,336 @@ app.get('/debug/user-context/:phone', (req, res) => {
     total_active_users: Object.keys(userContext).length,
     active_phones: Object.keys(userContext)
   });
+});
+
+// Serve payment page
+app.get('/payment', (req, res) => {
+  const phone = req.query.phone || req.query['prefill[contact]'] || req.query['notes[phone]'];
+  
+  console.log(`[PAYMENT PAGE REQUEST] Phone: ${phone}, All params:`, req.query);
+  
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApnaScheme - Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .phone-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+        .features {
+            text-align: left;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .features ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .features li {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        .pay-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 20px 0;
+        }
+        .pay-button:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        .pay-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🇮🇳 ApnaScheme</div>
+        <h2>Government Scheme Report</h2>
+        <p>Get your personalized eligibility report</p>
+        
+        <div class="phone-display">
+            <strong>📱 WhatsApp Number:</strong>
+            <div id="phoneDisplay" style="font-size: 18px; color: #667eea; margin-top: 5px;">${phone || 'Not detected'}</div>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 What you'll receive:</h3>
+            <ul>
+                <li>✅ Complete list of eligible government schemes</li>
+                <li>🔗 Direct application links for each scheme</li>
+                <li>📝 Application mode details (Online/Offline)</li>
+                <li>⚡ Instant delivery to your WhatsApp</li>
+                <li>💼 Personalized based on your profile</li>
+            </ul>
+        </div>
+        
+        <div style="font-size: 24px; color: #28a745; font-weight: bold; margin: 20px 0;">
+            Only ₹49
+        </div>
+        
+        <button id="payButton" class="pay-button" onclick="startPayment()" ${!phone ? 'disabled' : ''}>
+            💳 Pay ₹49 & Get Schemes
+        </button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processing payment...</p>
+        </div>
+        
+        <div id="error" class="error">${!phone ? 'Phone number not found. Please restart from WhatsApp.' : ''}</div>
+        
+        <p style="font-size: 12px; color: #6c757d; margin-top: 20px;">
+            🔒 Secure payment powered by Razorpay
+        </p>
+    </div>
+
+    <script>
+        const userPhone = '${phone || ''}';
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('payButton').disabled = show;
+        }
+        
+        async function createOrder() {
+            try {
+                showLoading(true);
+                hideError();
+                
+                const response = await fetch('/create-razorpay-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: userPhone,
+                        amount: 49
+                    })
+                });
+
+                const orderData = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(orderData.error || 'Failed to create order');
+                }
+
+                console.log('Order created:', orderData);
+                return orderData;
+            } catch (error) {
+                console.error('Order creation failed:', error);
+                showError('Failed to create payment order. Please try again.');
+                return null;
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function startPayment() {
+            if (!userPhone) {
+                showError('Phone number not found. Please restart from WhatsApp.');
+                return;
+            }
+
+            const orderData = await createOrder();
+            if (!orderData) return;
+
+            const options = {
+                key: orderData.key,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                order_id: orderData.id,
+                name: 'ApnaScheme',
+                description: 'Government Scheme Eligibility Report',
+                prefill: {
+                    contact: userPhone
+                },
+                notes: {
+                    phone: userPhone
+                },
+                handler: async function (response) {
+                    console.log('Payment successful:', response);
+                    await handlePaymentSuccess(response);
+                },
+                modal: {
+                    ondismiss: function() {
+                        console.log('Payment modal closed');
+                        showLoading(false);
+                    }
+                },
+                theme: {
+                    color: '#667eea'
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            
+            rzp.on('payment.failed', function (response) {
+                console.error('Payment failed:', response.error);
+                showError('Payment failed: ' + response.error.description);
+                showLoading(false);
+            });
+
+            showLoading(true);
+            rzp.open();
+        }
+        
+        async function handlePaymentSuccess(response) {
+            try {
+                showLoading(true);
+                
+                console.log('Sending payment success data:', {
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    phone: userPhone
+                });
+                
+                const successResponse = await fetch('/payment-success', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature,
+                        phone: userPhone
+                    })
+                });
+
+                const result = await successResponse.json();
+                console.log('Payment success response:', result);
+                
+                if (successResponse.ok && result.success) {
+                    document.querySelector('.container').innerHTML = \`
+                        <div class="success">
+                            <h1 style="color: #28a745; margin: 0 0 20px 0;">✅ Payment Successful!</h1>
+                            <p style="font-size: 18px; margin: 15px 0;">
+                                <strong>Payment ID:</strong> \${response.razorpay_payment_id}
+                            </p>
+                            <p style="font-size: 18px; margin: 15px 0;">
+                                <strong>WhatsApp:</strong> \${userPhone}
+                            </p>
+                            <div style="background: #e7f3ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 15px 0; color: #0066cc;">📱 Check Your WhatsApp</h3>
+                                <p>You're eligible for <strong>\${result.schemes_eligible}</strong> government schemes!</p>
+                                <p>All scheme details with direct application links are being sent to your WhatsApp now.</p>
+                            </div>
+                            <p style="margin-top: 30px; color: #6c757d;">
+                                Thank you for using ApnaScheme! 🙏
+                            </p>
+                        </div>
+                    \`;
+                } else {
+                    throw new Error(result.error || 'Payment processing failed');
+                }
+            } catch (error) {
+                console.error('Payment success processing failed:', error);
+                showError('Payment was successful, but there was an issue delivering your schemes. Please contact support with Payment ID: ' + response.razorpay_payment_id);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        window.addEventListener('load', function() {
+            if (!userPhone) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('payButton').disabled = true;
+            }
+            console.log('Page loaded with phone:', userPhone);
+        });
+    </script>
+</body>
+</html>`;
+  
+  res.send(html);
 });
 
 app.get('/', (req, res) => {
