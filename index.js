@@ -434,7 +434,7 @@ catch (error) {
     console.error('Webhook error:', error);
     res.status(500).send('Server error');
   }
-});
+);
 // ==============================================
 // Step 2: Make sure this is your VERY LAST LINE
 // ==============================================
