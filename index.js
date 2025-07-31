@@ -2,9 +2,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
-import crypto from 'crypto'; 
+import crypto from 'crypto';
 import Razorpay from 'razorpay';
-import bodyParser from 'body-parser';
 dotenv.config();
 
 const app = express();
@@ -20,9 +19,8 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-const userContext = {}; // Temporary in-memory store
-let schemes = []; // Store loaded schemes
-
+const userContext = {};
+let schemes = [];
 const QUESTIONS = {
   1: [
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
@@ -107,6 +105,7 @@ async function loadSchemes() {
     });
   });
 }
+
 
 // Filter eligible schemes
 function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
@@ -209,6 +208,10 @@ const mapAnswer = (lang, qIndex, rawInput) => {
   return mapping?.[rawInput] || rawInput;
 };
 
+
+// ... (Keep all your existing QUESTION, OPTION_MAPPINGS, loadSchemes(), 
+// getEligibleSchemes(), mapAnswer(), getNextQuestion() functions exactly as they are) ...
+
 const sendMessage = async (phone, msg) => {
   try {
     await axios.post(BASE_URL, null, {
@@ -229,105 +232,23 @@ const sendMessage = async (phone, msg) => {
   }
 };
 
-const getNextQuestion = (user) => {
- const lang = user.language;
-  const q = QUESTIONS[lang];
-  const res = user.responses;
-
-  if (res.length === 0) return q[0]; // Gender
-  if (res.length === 1) return q[1]; // Age
-  if (res.length === 2) return q[2]; // Occupation
-
-  let occupation = res[2]?.toLowerCase();
-
-  // Convert option numbers to labels first
-  if (lang === '1') { // Hindi
-    if (occupation === '1') occupation = 'छात्र';
-    else if (occupation === '2') occupation = 'बेरोज़गार';
-    else if (occupation === '3') occupation = 'नौकरीपेशा';
-    else if (occupation === '4') occupation = 'अन्य';
-  } else if (lang === '2') { // English
-    if (occupation === '1') occupation = 'student';
-    else if (occupation === '2') occupation = 'unemployed';
-    else if (occupation === '3') occupation = 'employed';
-    else if (occupation === '4') occupation = 'other';
-  } else if (lang === '3') { // Marathi
-    if (occupation === '1') occupation = 'विद्यार्थी';
-    else if (occupation === '2') occupation = 'बेरोजगार';
-    else if (occupation === '3') occupation = 'नोकरी करता';
-    else if (occupation === '4') occupation = 'इतर';
-  }
-
-  const isStudent = ['student', 'छात्र', 'विद्यार्थी'].includes(occupation);
-  const isUnemployed = ['unemployed', 'बेरोज़गार', 'बेरोजगार'].includes(occupation);
-  const isEmployed = ['employed', 'नौकरीपेशा', 'नोकरी करता'].includes(occupation);
-
-  // Always ask income question (q[3]) regardless of occupation
-  if (res.length === 3) return q[3]; // Income
-  
-  // Then proceed with bank account question
-  if (res.length === 4) return q[4]; // Bank account
-  
-  // Then ration card
-  if (res.length === 5) return q[5]; // Ration card
-  
-  // Then state
-  if (res.length === 6) return q[6]; // State
-  
-  // Finally caste
-  if (res.length === 7) return q[7]; // Caste
-  
-  return null; // Done
-};
-  // ... (keep your existing getNextQuestion implementation)
-
-
-// Create Razorpay Payment Link with phone in notes
-async function createPaymentLink(phone) {
-  try {
-    const paymentLink = await razorpay.paymentLink.create({
-      amount: 100, // ₹49 in paise
-      currency: 'INR',
-      description: "ApnaScheme Eligibility Report",
-      customer: {
-        name: "User",
-        contact: phone,
-      },
-      notes: {
-        phone: phone // Critical for webhook
-      },
-      reminder_enable: true,
-      callback_url: "https://apnascheme-bot.onrender.com/payment-success",
-      callback_method: "get"
-    });
-    return paymentLink.short_url;
-  } catch (error) {
-    console.error('Error creating payment link:', error);
-    throw error;
-  }
-}
-
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
   const phone = data?.sender?.phone;
   const msg = data?.payload?.text?.toLowerCase().trim();
 
   if (!userContext[phone]) {
-      if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
+    if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
     else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
     else if (msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
     else {
       await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n1. हिंदी\n2. English\n3. मराठी");
       return res.sendStatus(200);
     }
-
     const firstQuestion = getNextQuestion(userContext[phone]);
     await sendMessage(phone, firstQuestion);
     return res.sendStatus(200);
   }
-    // Initial message handling (same as before)
-    // ... (keep your existing initial message logic)
-  
 
   const user = userContext[phone];
   const qIndex = user.responses.length;
@@ -340,49 +261,43 @@ app.post('/gupshup', async (req, res) => {
   } else {
     const eligibleSchemes = getEligibleSchemes(user.responses);
     
-    try {
-      const paymentUrl = await createPaymentLink(phone);
-      
-      let closingMessage = "";
-      if (user.language === '1') {
-          closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
-                        + `सिर्फ ₹49 में पाएं:\n`
-                        + `आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
-                        + `सीधे आवेदन करने के लिंक\n\n`
-                        + `अभी पेमेंट करें: \n${paymentUrl}\n\n`
-                        + `ऑफर सीमित समय के लिए!`;
-      } else if (user.language === '2') {
-          closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
-                        + `For just ₹49 get:\n`
-                        + `Complete list of all schemes\n`
-                        + `Direct application links\n\n`
-                        + `Make payment now: \n${paymentUrl}\n\n`
-                        + `Limited time offer!`;
-      } else if (user.language === '3') {
-          closingMessage = `जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
-                        + `फक्त ₹49 मध्ये मिळवा:\n`
-                        + `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
-                        + `थेट अर्ज करण्याचे लिंक\n\n`
-                        + `आत्ताच पेमेंट करा: \n${paymentUrl}\n\n`
-                        + `मर्यादित वेळ ऑफर!`;
-      }
-
-      await sendMessage(phone, closingMessage);
-    } catch (error) {
-      console.error('Payment link creation failed:', error);
-      await sendMessage(phone, "Payment service is currently unavailable. Please try again later.");
+    // Use your existing payment page with phone prefill
+    const paymentUrl = `https://rzp.io/rzp/apnascheme?prefill[contact]=${phone}&notes[phone]=${phone}`;
+    
+    let closingMessage = "";
+    if (user.language === '1') {
+      closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+                    + `सिर्फ ₹49 में पाएं:\n`
+                    + `आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
+                    + `सीधे आवेदन करने के लिंक\n\n`
+                    + `अभी पेमेंट करें: \n${paymentUrl}\n\n`
+                    + `ऑफर सीमित समय के लिए!`;
+    } else if (user.language === '2') {
+      closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+                    + `For just ₹49 get:\n`
+                    + `Complete list of all schemes\n`
+                    + `Direct application links\n\n`
+                    + `Make payment now: \n${paymentUrl}\n\n`
+                    + `Limited time offer!`;
+    } else if (user.language === '3') {
+      closingMessage = `जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+                    + `फक्त ₹49 मध्ये मिळवा:\n`
+                    + `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
+                    + `थेट अर्ज करण्याचे लिंक\n\n`
+                    + `आत्ताच पेमेंट करा: \n${paymentUrl}\n\n`
+                    + `मर्यादित वेळ ऑफर!`;
     }
+
+    await sendMessage(phone, closingMessage);
   }
   res.sendStatus(200);
 });
 
-// Razorpay Webhook Handler
 app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
+    // Verify signature
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const razorpaySignature = req.headers['x-razorpay-signature'];
-    
-    // Verify signature
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(req.body);
     const digest = hmac.digest('hex');
@@ -392,7 +307,7 @@ app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (
       return res.status(401).send('Unauthorized');
     }
 
-    const payload = JSON.parse(req.body.toString('utf8'));
+    const payload = JSON.parse(req.body.toString());
     const payment = payload?.payload?.payment?.entity;
 
     if (!payment || payment.status !== 'captured') {
@@ -400,7 +315,6 @@ app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (
       return res.status(400).send('Invalid payment');
     }
 
-    // Get phone from payment notes
     const userPhone = payment.notes?.phone;
     if (!userPhone || !userContext[userPhone]) {
       console.warn('❓ User context not found for phone:', userPhone);
@@ -408,44 +322,36 @@ app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (
     }
 
     const user = userContext[userPhone];
-    console.log('✅ Payment verified for user:', userPhone);
+    const schemes = getEligibleSchemes(user.responses);
 
-    // Send initial confirmation
-    await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
+    // Send scheme details
+    let initialMessage = '';
+    if (user.language === '1') {
+      initialMessage = `✅ भुगतान सफल! आप ${schemes.length} योजनाओं के पात्र हैं:`;
+    } else if (user.language === '3') {
+      initialMessage = `✅ पेमेंट यशस्वी! तुम्ही ${schemes.length} योजनांसाठी पात्र आहात:`;
+    } else {
+      initialMessage = `✅ Payment successful! You're eligible for ${schemes.length} schemes:`;
+    }
+    await sendMessage(userPhone, initialMessage);
 
-    // Get eligible schemes
-    const eligibleSchemes = getEligibleSchemes(user.responses);
-    const lang = user.language || '2';
-
-    // Format message based on language
-    let message;
-    if (lang === '1') { // Hindi
-      message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
-      });
-      message += `📄 रसीद ID: ${payment.id}`;
-    } 
-    else if (lang === '3') { // Marathi
-      message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
-      });
-      message += `📄 पावती ID: ${payment.id}`;
-    } 
-    else { // English
-      message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
-      });
-      message += `📄 Receipt ID: ${payment.id}`;
+    // Send schemes in batches
+    for (let i = 0; i < schemes.length; i++) {
+      let schemeMessage = '';
+      if (user.language === '1') {
+        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 आवेदन: ${schemes[i].OfficialLink}\n📝 तरीका: ${schemes[i].ApplicationMode}`;
+      } else if (user.language === '3') {
+        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 अर्ज: ${schemes[i].OfficialLink}\n📝 पद्धत: ${schemes[i].ApplicationMode}`;
+      } else {
+        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 Apply: ${schemes[i].OfficialLink}\n📝 Mode: ${schemes[i].ApplicationMode}`;
+      }
+      
+      await sendMessage(userPhone, schemeMessage);
+      
+      // Add delay between messages to avoid rate limiting
+      if (i % 3 === 0) await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Send final message
-    await sendMessage(userPhone, message);
-    console.log(`📩 Sent schemes to ${userPhone}`);
-
-    // Cleanup
     delete userContext[userPhone];
     res.status(200).send('Success');
   } catch (error) {
@@ -458,7 +364,6 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running');
 });
 
-// Start server
 app.listen(PORT, async () => {
   try {
     await loadSchemes();
