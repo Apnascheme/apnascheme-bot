@@ -2,7 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
-import crypto from 'crypto';
 import Razorpay from 'razorpay';
 dotenv.config();
 
@@ -21,6 +20,7 @@ const razorpay = new Razorpay({
 
 const userContext = {};
 let schemes = [];
+
 const QUESTIONS = {
   1: [
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
@@ -208,7 +208,6 @@ const mapAnswer = (lang, qIndex, rawInput) => {
   return mapping?.[rawInput] || rawInput;
 };
 
-
 // ... (Keep all your existing QUESTION, OPTION_MAPPINGS, loadSchemes(), 
 // getEligibleSchemes(), mapAnswer(), getNextQuestion() functions exactly as they are) ...
 
@@ -217,18 +216,20 @@ const sendMessage = async (phone, msg) => {
     const encodedMessage = encodeURIComponent(msg);
     const url = `${BASE_URL}?channel=whatsapp&source=${GUPSHUP_PHONE_NUMBER}&destination=${phone}&message=${encodedMessage}&src.name=ApnaSchemeTechnologies`;
     
-    await axios.post(url, null, {
+    const response = await axios.post(url, null, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         apikey: GUPSHUP_APP_TOKEN
       }
     });
+    return response.data;
   } catch (error) {
-    console.error('Failed to send WhatsApp message:', error.response?.data || error.message);
+    console.error('Error sending message:', error);
+    throw error;
   }
 };
-const getNextQuestion = (user) => {
- const lang = user.language;
+  const getNextQuestion = (user) => {
+  const lang = user.language;
   const q = QUESTIONS[lang];
   const res = user.responses;
 
@@ -277,143 +278,106 @@ const getNextQuestion = (user) => {
   
   return null; // Done
 };
+ 
 
-
-app.post('/gupshup', async (req, res) => {
-  const data = req.body?.payload;
-  const phone = data?.sender?.phone;
-  const msg = data?.payload?.text?.toLowerCase().trim();
-
-  if (!userContext[phone]) {
-    if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
-    else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
-    else if (msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
-    else {
-      await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n1. हिंदी\n2. English\n3. मराठी");
-      return res.sendStatus(200);
-    }
-    const firstQuestion = getNextQuestion(userContext[phone]);
-    await sendMessage(phone, firstQuestion);
-    return res.sendStatus(200);
-  }
-
-  const user = userContext[phone];
-  const qIndex = user.responses.length;
-  const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
-  user.responses.push(mapped);
-
-  const next = getNextQuestion(user);
-  if (next) {
-    await sendMessage(phone, next);
-  } else {
-    const eligibleSchemes = getEligibleSchemes(user.responses);
+// ================= NEW PAYMENT ENDPOINTS =================
+// ================= UPDATED PAYMENT ENDPOINTS =================
+app.post('/create-razorpay-order', async (req, res) => {
+  try {
+    const { phone, amount } = req.body;
     
-    // Use your existing payment page with phone prefill
-    const paymentUrl = `https://rzp.io/rzp/apnascheme?prefill[contact]=${phone}&notes[phone]=${phone}`;
-    
-    let closingMessage = "";
-    if (user.language === '1') {
-      closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
-                    + `सिर्फ ₹49 में पाएं:\n`
-                    + `आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
-                    + `सीधे आवेदन करने के लिंक\n\n`
-                    + `अभी पेमेंट करें: \n${paymentUrl}\n\n`
-                    + `ऑफर सीमित समय के लिए!`;
-    } else if (user.language === '2') {
-      closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
-                    + `For just ₹49 get:\n`
-                    + `Complete list of all schemes\n`
-                    + `Direct application links\n\n`
-                    + `Make payment now: \n${paymentUrl}\n\n`
-                    + `Limited time offer!`;
-    } else if (user.language === '3') {
-      closingMessage = `जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
-                    + `फक्त ₹49 मध्ये मिळवा:\n`
-                    + `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
-                    + `थेट अर्ज करण्याचे लिंक\n\n`
-                    + `आत्ताच पेमेंट करा: \n${paymentUrl}\n\n`
-                    + `मर्यादित वेळ ऑफर!`;
+    // Validate input
+    if (!phone || !amount) {
+      return res.status(400).json({ error: 'Phone and amount are required' });
     }
 
-    await sendMessage(phone, closingMessage);
+    const options = {
+      amount: amount * 100, // Convert rupees to paise
+      currency: "INR",
+      receipt: `order_${Date.now()}_${phone}`,
+      notes: { 
+        phone,
+        purpose: 'Scheme Eligibility Report' 
+      },
+      payment_capture: 1 // Auto-capture payments
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.json({
+      id: order.id,
+      currency: order.currency,
+      amount: order.amount,
+      key: process.env.RAZORPAY_KEY_ID // Send key for client-side integration
+    });
+  } catch (error) {
+    console.error("Order creation failed:", error);
+    res.status(500).json({ error: "Payment processing error" });
   }
-  res.sendStatus(200);
 });
 
-app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) => {
-    try {
-      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-      const razorpaySignature = req.headers['x-razorpay-signature'];
-      const rawBody = req.body;
+app.post('/payment-success', async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, phone } = req.body;
+    
+    // Validate input
+    if (!razorpay_payment_id || !phone) {
+      return res.status(400).send('Missing payment details');
+    }
 
-      // Calculate expected signature
-      const crypto = require('crypto');
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(req.body); // this works now, because req.body is Buffer
-  const digest = hmac.digest('hex');
+    // Verify payment with Razorpay
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    
+    if (payment.status !== 'captured') {
+      return res.status(400).send('Payment not captured');
+    }
 
-        if (digest === expectedSignature) {
-        console.warn('⚠️ Invalid Razorpay signature');
-        return res.status(401).send('Unauthorized');
-      }
+    if (payment.order_id !== razorpay_order_id) {
+      return res.status(400).send('Order ID mismatch');
+    }
 
-      // Parse body after verification
-      const payload = JSON.parse(rawBody.toString('utf8'));
-      const payment = payload?.payload?.payment?.entity;
+    const user = userContext[phone];
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
 
-      if (!payment || payment.status !== 'captured') {
-        console.warn('❌ Not a captured payment');
-        return res.status(400).send('Invalid payment');
-      }
-
-      const userPhone = payment.notes?.phone;
-      if (!userPhone || !userContext[userPhone]) {
-        console.warn('❓ User context not found for phone:', userPhone);
-        return res.status(404).send('User not found');
-      }
-
-      const user = userContext[userPhone];
-      console.log('✅ Payment verified for user:', userPhone);
-
-      // Send initial confirmation
-      await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
-
-      
-    const schemes = getEligibleSchemes(user.responses);
-
-    // Send scheme details
-    let initialMessage = '';
-    if (user.language === '1') {
-      initialMessage = `✅ भुगतान सफल! आप ${schemes.length} योजनाओं के पात्र हैं:`;
-    } else if (user.language === '3') {
-      initialMessage = `✅ पेमेंट यशस्वी! तुम्ही ${schemes.length} योजनांसाठी पात्र आहात:`;
+    const eligibleSchemes = getEligibleSchemes(user.responses);
+    
+    // Send confirmation
+    let lang = user.language || '2';
+    let initialMsg = '';
+    
+    if (lang === '1') {
+      initialMsg = `✅ भुगतान सफल! आप ${eligibleSchemes.length} योजनाओं के पात्र हैं:\n\n`;
+    } else if (lang === '3') {
+      initialMsg = `✅ पेमेंट यशस्वी! तुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात:\n\n`;
     } else {
-      initialMessage = `✅ Payment successful! You're eligible for ${schemes.length} schemes:`;
-    }
-    await sendMessage(userPhone, initialMessage);
-
-    // Send schemes in batches
-    for (let i = 0; i < schemes.length; i++) {
-      let schemeMessage = '';
-      if (user.language === '1') {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 आवेदन: ${schemes[i].OfficialLink}\n📝 तरीका: ${schemes[i].ApplicationMode}`;
-      } else if (user.language === '3') {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 अर्ज: ${schemes[i].OfficialLink}\n📝 पद्धत: ${schemes[i].ApplicationMode}`;
-      } else {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 Apply: ${schemes[i].OfficialLink}\n📝 Mode: ${schemes[i].ApplicationMode}`;
-      }
-      
-      await sendMessage(userPhone, schemeMessage);
-      
-      // Add delay between messages to avoid rate limiting
-      if (i % 3 === 0) await new Promise(resolve => setTimeout(resolve, 500));
+      initialMsg = `✅ Payment successful! You're eligible for ${eligibleSchemes.length} schemes:\n\n`;
     }
 
-    delete userContext[userPhone];
-    res.status(200).send('Success');
+    // Prepare scheme details
+    const schemeMessages = eligibleSchemes.map((scheme, index) => {
+      return `${index+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'No link available'}\n📝 ${scheme.ApplicationMode || 'Online/Offline'}\n`;
+    });
+
+    // Send initial message
+    await sendMessage(phone, initialMsg);
+
+    // Send schemes in batches to avoid rate limiting
+    for (let i = 0; i < schemeMessages.length; i++) {
+      await sendMessage(phone, schemeMessages[i]);
+      if (i % 2 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Clear user context
+    delete userContext[phone];
+    
+    res.status(200).json({ 
+      success: true,
+      schemes: eligibleSchemes.length
+    });
   } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).send('Server error');
+    console.error('Payment success error:', error);
+    res.status(500).json({ error: 'Failed to process payment' });
   }
 });
 
@@ -430,3 +394,5 @@ app.listen(PORT, async () => {
     process.exit(1);
   }
 });
+
+// ... (Keep your existing /gupshup, /, and app.listen() code exactly as before) ...
