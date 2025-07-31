@@ -342,41 +342,55 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
-
-app.post('/razorpay-webhook', async (req, res) => {
+app.use('/razorpay-webhook', async (req, res, next) => {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-    const body = req.body.toString();
+    req.rawBody = await getRawBody(req);
+    next();
+  } catch (err) {
+    console.error('Error parsing raw body:', err);
+    res.status(400).send('Invalid body');
+  }
+});
 
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex');
+// Then parse JSON after raw body is captured
+app.use('/razorpay-webhook', express.json());
 
-    if (signature !== expectedSignature) {
-      console.warn('⚠️ Invalid Razorpay signature');
-      return res.status(401).send('Unauthorized');
-    }
+const userContext = {}; // assuming you define this elsewhere
 
-    const payload = JSON.parse(body);
-    const payment = payload?.payload?.payment?.entity;
+app.post('/razorpay-webhook', (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const signature = req.headers['x-razorpay-signature'];
 
-    if (!payment || payment.status !== 'captured') {
-      return res.status(400).send('Not a captured payment');
-    }
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(req.rawBody)
+    .digest('hex');
 
-    // Extract phone number from notes
-    const userPhone = payment.notes?.phone;
-    if (!userPhone || !userContext[userPhone]) {
-      console.warn('User context not found for phone:', userPhone);
-      return res.status(404).send('User not found');
-    }
+  if (signature !== expectedSignature) {
+    console.warn('⚠️ Invalid Razorpay signature');
+    return res.status(401).send('Unauthorized');
+  }
 
-    const user = userContext[userPhone];
+  const payload = req.body;
+  const payment = payload?.payload?.payment?.entity;
 
+  if (!payment || payment.status !== 'captured') {
+    return res.status(400).send('Not a captured payment');
+  }
 
+  const userPhone = payment.notes?.phone;
+  if (!userPhone || !userContext[userPhone]) {
+    console.warn('User context not found for phone:', userPhone);
+    return res.status(404).send('User not found');
+  }
+
+  const user = userContext[userPhone];
+  // Your logic here...
+
+  return res.status(200).send('Webhook processed');
+});
+
+export default app;
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
