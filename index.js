@@ -346,7 +346,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) 
       const rawBody = req.body;
 
       // Calculate expected signature
-      const crypto = require('crypto');
+     const expectedSignature = razorpaySignature;
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(req.body); // this works now, because req.body is Buffer
   const digest = hmac.digest('hex');
