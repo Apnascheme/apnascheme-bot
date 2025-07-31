@@ -342,57 +342,38 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.use('/razorpay-webhook', async (req, res, next) => {
-  try {
-    req.rawBody = await getRawBody(req);
-    next();
-  } catch (err) {
-    console.error('Error parsing raw body:', err);
-    res.status(400).send('Invalid body');
-  }
-});
-
-
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-
 app.post('/razorpay-webhook', async (req, res) => {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  const signature = req.headers['x-razorpay-signature'];
-  const body = req.body; // this is a Buffer now
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    const body = req.body.toString();
 
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(body)
-    .digest('hex');
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body)
+      .digest('hex');
 
-  if (signature !== expectedSignature) {
-    console.warn('⚠️ Invalid Razorpay signature');
-    return res.status(401).send('Unauthorized');
-  }
+    if (signature !== expectedSignature) {
+      console.warn('⚠️ Invalid Razorpay signature');
+      return res.status(401).send('Unauthorized');
+    }
 
-  const payload = JSON.parse(body.toString('utf8')); // parse after verifying signature
-  const payment = payload?.payload?.payment?.entity;
+    const payload = JSON.parse(body);
+    const payment = payload?.payload?.payment?.entity;
 
-  if (!payment || payment.status !== 'captured') {
-    return res.status(400).send('Not a captured payment');
-  }
+    if (!payment || payment.status !== 'captured') {
+      return res.status(400).send('Not a captured payment');
+    }
 
-  const userPhone = payment.notes?.phone;
-  if (!userPhone || !userContext[userPhone]) {
-    console.warn('User context not found for phone:', userPhone);
-    return res.status(404).send('User not found');
-  }
+    const userPhone = payment.notes?.phone;
+    if (!userPhone || !userContext[userPhone]) {
+      console.warn('User context not found for phone:', userPhone);
+      return res.status(404).send('User not found');
+    }
 
-  const user = userContext[userPhone];
-  // ...rest of your logic
-
-
-
-  return res.status(200).send('Webhook processed');
-});
-
-export default app;
+    const user = userContext[userPhone];
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
