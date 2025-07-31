@@ -343,18 +343,19 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-  app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const razorpaySignature = req.headers['x-razorpay-signature'];
     const rawBody = req.body;
 
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(rawBody);
-    const digest = hmac.digest('hex');
-
-    if (digest !== razorpaySignature) {
-      console.warn('⚠️ Invalid Razorpay signature');
+    // Verify signature (base64, not hex)
+    const generatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(rawBody)
+      .digest('base64');
+    if (generatedSignature !== razorpaySignature) {
+      console.warn('⚠ Invalid Razorpay signature');
       return res.status(401).send('Unauthorized');
     }
 
@@ -376,7 +377,15 @@ app.get('/', (req, res) => {
     console.log('✅ Payment verified for user:', userPhone);
 
     await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
-      // Get eligible schemes
+    // ... rest of your code ...
+    // Only delete userContext after sending!
+    delete userContext[userPhone];
+    res.status(200).send('Success');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Server error');
+  }
+});
       const eligibleSchemes = getEligibleSchemes(user.responses);
       const lang = user.language || '2';
 
