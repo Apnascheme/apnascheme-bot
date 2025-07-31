@@ -381,58 +381,55 @@ app.post('/payment-success', async (req, res) => {
     
     // Validate input
     if (!razorpay_payment_id || !phone) {
-      return res.status(400).send('Missing payment details');
+      return res.status(400).json({ error: 'Missing payment details' });
     }
 
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
     
     if (payment.status !== 'captured') {
-      return res.status(400).send('Payment not captured');
+      return res.status(400).json({ error: 'Payment not captured' });
     }
 
     if (payment.order_id !== razorpay_order_id) {
-      return res.status(400).send('Order ID mismatch');
+      return res.status(400).json({ error: 'Order ID mismatch' });
     }
 
     const user = userContext[phone];
     if (!user) {
-      return res.status(404).send('User not found');
+      return res.status(404).json({ error: 'User not found' });
     }
 
+    const eligibleSchemes = getEligibleSchemes(user.responses);
 
+    // Send confirmation
+    let initialMsg = '';
+    if (user.language === '1') {
+      initialMsg = `✅ भुगतान सफल! आप ${eligibleSchemes.length} योजनाओं के पात्र हैं:\n\n`;
+    } else if (user.language === '3') {
+      initialMsg = `✅ पेमेंट यशस्वी! तुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात:\n\n`;
+    } else {
+      initialMsg = `✅ Payment successful! You're eligible for ${eligibleSchemes.length} schemes:\n\n`;
+    }
 
-
-
-
-      
-    const schemes = getEligibleSchemes(user.responses);
+    // Send initial message
+    await sendMessage(phone, initialMsg);
 
     // Send scheme details
-    let initialMessage = '';
-    if (user.language === '1') {
-      initialMessage = `✅ भुगतान सफल! आप ${schemes.length} योजनाओं के पात्र हैं:`;
-    } else if (user.language === '3') {
-      initialMessage = `✅ पेमेंट यशस्वी! तुम्ही ${schemes.length} योजनांसाठी पात्र आहात:`;
-    } else {
-      initialMessage = `✅ Payment successful! You're eligible for ${schemes.length} schemes:`;
-    }
-    await sendMessage(userPhone, initialMessage);
-
-    // Send schemes in batches
-    for (let i = 0; i < schemes.length; i++) {
-      let schemeMessage = '';
+    for (let i = 0; i < eligibleSchemes.length; i++) {
+      const scheme = eligibleSchemes[i];
+      let schemeMsg = '';
+      
       if (user.language === '1') {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 आवेदन: ${schemes[i].OfficialLink}\n📝 तरीका: ${schemes[i].ApplicationMode}`;
+        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'आवेदन लिंक'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
       } else if (user.language === '3') {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 अर्ज: ${schemes[i].OfficialLink}\n📝 पद्धत: ${schemes[i].ApplicationMode}`;
+        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'अर्ज लिंक'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
       } else {
-        schemeMessage = `\n${i+1}. ${schemes[i].SchemeName}\n🔗 Apply: ${schemes[i].OfficialLink}\n📝 Mode: ${schemes[i].ApplicationMode}`;
+        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'Apply link'}\n📝 ${scheme.ApplicationMode || 'Online/Offline'}`;
       }
       
-      await sendMessage(userPhone, schemeMessage);
+      await sendMessage(phone, schemeMsg);
       
-    for (let i = 0; i < schemeMessages.length; i++) {
-      await sendMessage(phone, schemeMessages[i]);
+      // Add delay every 2 messages to avoid rate limiting
       if (i % 2 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -448,7 +445,6 @@ app.post('/payment-success', async (req, res) => {
     res.status(500).json({ error: 'Failed to process payment' });
   }
 });
-
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running');
 });
