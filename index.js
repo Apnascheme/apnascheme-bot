@@ -387,7 +387,7 @@ app.post(
     await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
     res.sendStatus(200);
   
-);
+
     
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
@@ -424,10 +424,13 @@ app.post(
       console.error('Failed to send WhatsApp:', err);
       throw err;
     }
+    
 
     delete userContext[userPhone]; // Cleanup
     res.status(200).send('Success');
-  } catch (error) {
+  } 
+  );
+catch (error) {
     console.error('Webhook error:', error);
     res.status(500).send('Server error');
   }
