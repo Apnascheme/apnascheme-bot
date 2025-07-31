@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
-import crypto from 'crypto';
+import crypto from 'crypto'; 
 import Razorpay from 'razorpay';
 dotenv.config();
 
@@ -14,7 +14,6 @@ const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
 const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
 const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 
-// Initialize Razorpay client
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
@@ -22,6 +21,7 @@ const razorpay = new Razorpay({
 
 const userContext = {}; // Temporary in-memory store
 let schemes = []; // Store loaded schemes
+
 
 const QUESTIONS = {
   1: [
@@ -55,6 +55,7 @@ const QUESTIONS = {
     "तुम्ही SC/ST/OBC/EWS प्रवर्गात मोडता का?\n1. होय\n2. नाही"
   ]
 };
+
 const OPTION_MAPPINGS = {
   1: {
     0: { '1': 'पुरुष', '2': 'महिला', '3': 'अन्य' },
@@ -106,6 +107,7 @@ async function loadSchemes() {
     });
   });
 }
+
 // Filter eligible schemes (updated version)
 // Filter eligible schemes (updated version)
 function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
@@ -276,8 +278,6 @@ const getNextQuestion = (user) => {
   return null; // Done
 };
 
-// ... [Keep all your existing OPTION_MAPPINGS, loadSchemes(), getEligibleSchemes(), mapAnswer(), sendMessage(), and getNextQuestion() functions unchanged] ...
-
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
   const phone = data?.sender?.phone;
@@ -305,7 +305,7 @@ app.post('/gupshup', async (req, res) => {
   const next = getNextQuestion(user);
   if (next) {
     await sendMessage(phone, next);
-  } else {
+ } else {
     const eligibleSchemes = getEligibleSchemes(user.responses);
     
     let closingMessage = "";
@@ -314,30 +314,34 @@ app.post('/gupshup', async (req, res) => {
                       + ` सिर्फ ₹49 में पाएं:\n`
                       + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
                       + ` सीधे आवेदन करने के लिंक\n\n`
-                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + ` ऑफर सीमित समय के लिए!`;
     } else if (user.language === '2') {
         closingMessage = ` Amazing News! \nYou're eligible for ${eligibleSchemes.length} government schemes!\n\n`
                       + ` For just ₹49 get:\n`
                       + ` Complete list of all schemes for you\n`
                       + ` Direct application links\n\n`
-                      + ` Make payment now: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` Make payment now: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + `Limited time offer!`;
     } else if (user.language === '3') {
         closingMessage = ` जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
                       + ` फक्त ₹49 मध्ये मिळवा:\n`
                       + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
                       + ` थेट अर्ज करण्याचे लिंक\n\n`
-                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/razorpay49\n\n`
                       + ` मर्यादित वेळ ऑफर!`;
     }
 
     await sendMessage(phone, closingMessage);
-  }
+  
+}
   res.sendStatus(200);
 });
 
-// Razorpay Webhook Handler
+app.get('/', (req, res) => {
+  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
+});
+
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
 app.post('/razorpay-webhook', async (req, res) => {
@@ -371,6 +375,9 @@ app.post('/razorpay-webhook', async (req, res) => {
     }
 
     const user = userContext[userPhone];
+
+
+    // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
 
@@ -397,9 +404,15 @@ app.post('/razorpay-webhook', async (req, res) => {
       message += `📄 Receipt ID: ${payment.id}`;
     }
 
-    await sendMessage(userPhone, message);
-    console.log(`📩 Sent schemes to ${userPhone}`);
-    
+    // 6. Send WhatsApp message
+    try {
+      await sendMessage(userPhone, message);
+      console.log(`📩 Sent schemes to ${userPhone}`);
+    } catch (err) {
+      console.error('Failed to send WhatsApp:', err);
+      throw err;
+    }
+
     delete userContext[userPhone]; // Cleanup
     res.status(200).send('Success');
   } catch (error) {
@@ -407,41 +420,9 @@ app.post('/razorpay-webhook', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
-
-// Test endpoint to verify Razorpay integration
-app.get('/test-razorpay', async (req, res) => {
-  try {
-    const testPhone = '9321875559'; // Test phone number
-    const options = {
-      amount: 4900, // ₹49 in paise
-      currency: "INR",
-      receipt: "order_test_001",
-      notes: {
-        phone: testPhone, // Including phone in notes
-        purpose: "ApnaScheme test payment"
-      },
-    };
-
-    const order = await razorpay.orders.create(options);
-    res.json({
-      success: true,
-      orderId: order.id,
-      message: `Test order created for ${testPhone}`,
-      paymentLink: `https://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(testPhone)}`
-    });
-  } catch (error) {
-    console.error('Razorpay test error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-app.get('/', (req, res) => {
-  res.send('✅ ApnaScheme Bot is running with Razorpay integration');
-});
-
+// ==============================================
+// Step 2: Make sure this is your VERY LAST LINE
+// ==============================================
 app.listen(PORT, async () => {
   try {
     await loadSchemes();
