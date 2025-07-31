@@ -310,21 +310,21 @@ app.post('/gupshup', async (req, res) => {
     
     let closingMessage = "";
     if (user.language === '1') {
-        closingMessage = ` ज़बरदस्त खबर! \nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
+        closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
                       + ` सिर्फ ₹49 में पाएं:\n`
-                      + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
+                      + ` आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
                       + ` सीधे आवेदन करने के लिंक\n\n`
                       + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
                       + ` ऑफर सीमित समय के लिए!`;
     } else if (user.language === '2') {
-        closingMessage = ` Amazing News! \nYou're eligible for ${eligibleSchemes.length} government schemes!\n\n`
+        closingMessage = ` You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
                       + ` For just ₹49 get:\n`
-                      + ` Complete list of all schemes for you\n`
+                      + ` Complete list of all schemes\n`
                       + ` Direct application links\n\n`
                       + ` Make payment now: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
-                      + `Limited time offer!`;
+                      + ` Limited time offer!`;
     } else if (user.language === '3') {
-        closingMessage = ` जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
+        closingMessage = ` तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
                       + ` फक्त ₹49 मध्ये मिळवा:\n`
                       + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
                       + ` थेट अर्ज करण्याचे लिंक\n\n`
