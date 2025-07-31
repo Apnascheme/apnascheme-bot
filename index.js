@@ -345,7 +345,7 @@ app.get('/', (req, res) => {
 
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-app.post('/razorpay-webhook', bodyParser.raw({ type: 'application/json' }), (req, res) => {
+app.post('/razorpay-webhook', bodyParser.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
