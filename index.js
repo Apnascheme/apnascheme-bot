@@ -340,35 +340,45 @@ app.post('/gupshup', async (req, res) => {
   res.sendStatus(200);
 });
 
-app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    // Verify signature
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const razorpaySignature = req.headers['x-razorpay-signature'];
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(req.body);
-    const digest = hmac.digest('hex');
+app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) => {
+    try {
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      const razorpaySignature = req.headers['x-razorpay-signature'];
+      const rawBody = req.body;
 
-    if (digest !== razorpaySignature) {
-      console.warn('⚠ Invalid Razorpay signature');
-      return res.status(401).send('Unauthorized');
-    }
+      // Calculate expected signature
+      const crypto = require('crypto');
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(req.body); // this works now, because req.body is Buffer
+  const digest = hmac.digest('hex');
 
-    const payload = JSON.parse(req.body.toString());
-    const payment = payload?.payload?.payment?.entity;
+        if (digest === expectedSignature) {
+        console.warn('⚠️ Invalid Razorpay signature');
+        return res.status(401).send('Unauthorized');
+      }
 
-    if (!payment || payment.status !== 'captured') {
-      console.warn('❌ Not a captured payment');
-      return res.status(400).send('Invalid payment');
-    }
+      // Parse body after verification
+      const payload = JSON.parse(rawBody.toString('utf8'));
+      const payment = payload?.payload?.payment?.entity;
 
-    const userPhone = payment.notes?.phone;
-    if (!userPhone || !userContext[userPhone]) {
-      console.warn('❓ User context not found for phone:', userPhone);
-      return res.status(404).send('User not found');
-    }
+      if (!payment || payment.status !== 'captured') {
+        console.warn('❌ Not a captured payment');
+        return res.status(400).send('Invalid payment');
+      }
 
-    const user = userContext[userPhone];
+      const userPhone = payment.notes?.phone;
+      if (!userPhone || !userContext[userPhone]) {
+        console.warn('❓ User context not found for phone:', userPhone);
+        return res.status(404).send('User not found');
+      }
+
+      const user = userContext[userPhone];
+      console.log('✅ Payment verified for user:', userPhone);
+
+      // Send initial confirmation
+      await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
+
+      
     const schemes = getEligibleSchemes(user.responses);
 
     // Send scheme details
