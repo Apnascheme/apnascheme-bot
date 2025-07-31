@@ -217,17 +217,19 @@ const sendMessage = async (phone, msg) => {
     const encodedMessage = encodeURIComponent(msg);
     const url = `${BASE_URL}?channel=whatsapp&source=${GUPSHUP_PHONE_NUMBER}&destination=${phone}&message=${encodedMessage}&src.name=ApnaSchemeTechnologies`;
     
-  const response=await axios.post(url, null, {
+    const response = await axios.post(url, null, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         apikey: GUPSHUP_APP_TOKEN
       }
     });
-    return response data;
+    return response.data;
   } catch (error) {
-    console.error('Failed to send WhatsApp message:', error.response?.data || error.message);
+    console.error('Error sending message:', error);
+    throw error;
   }
 };
+
 const getNextQuestion = (user) => {
  const lang = user.language;
   const q = QUESTIONS[lang];
