@@ -314,21 +314,21 @@ app.post('/gupshup', async (req, res) => {
                       + ` सिर्फ ₹49 में पाएं:\n`
                       + `  आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
                       + ` सीधे आवेदन करने के लिंक\n\n`
-                      + ` अभी पेमेंट करें: \nhttps://rzp.io/l/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
                       + ` ऑफर सीमित समय के लिए!`;
     } else if (user.language === '2') {
         closingMessage = ` Amazing News! \nYou're eligible for ${eligibleSchemes.length} government schemes!\n\n`
                       + ` For just ₹49 get:\n`
                       + ` Complete list of all schemes for you\n`
                       + ` Direct application links\n\n`
-                      + ` Make payment now: \nhttps://rzp.io/l/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` Make payment now: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
                       + `Limited time offer!`;
     } else if (user.language === '3') {
         closingMessage = ` जबरदस्त बातम्या! \nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
                       + ` फक्त ₹49 मध्ये मिळवा:\n`
                       + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
                       + ` थेट अर्ज करण्याचे लिंक\n\n`
-                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/l/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
+                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(phone)}\n\n`
                       + ` मर्यादित वेळ ऑफर!`;
     }
 
@@ -427,7 +427,7 @@ app.get('/test-razorpay', async (req, res) => {
       success: true,
       orderId: order.id,
       message: `Test order created for ${testPhone}`,
-      paymentLink: `https://rzp.io/l/apnascheme?notes[phone]=${encodeURIComponent(testPhone)}`
+      paymentLink: `https://rzp.io/rzp/apnascheme?notes[phone]=${encodeURIComponent(testPhone)}`
     });
   } catch (error) {
     console.error('Razorpay test error:', error);
