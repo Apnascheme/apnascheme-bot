@@ -214,21 +214,17 @@ const mapAnswer = (lang, qIndex, rawInput) => {
 
 const sendMessage = async (phone, msg) => {
   try {
-    await axios.post(BASE_URL, null, {
-      params: {
-        channel: 'whatsapp',
-        source: GUPSHUP_PHONE_NUMBER,
-        destination: phone,
-        message: msg,
-        'src.name': 'ApnaSchemeTechnologies'
-      },
+    const encodedMessage = encodeURIComponent(msg);
+    const url = `${BASE_URL}?channel=whatsapp&source=${GUPSHUP_PHONE_NUMBER}&destination=${phone}&message=${encodedMessage}&src.name=ApnaSchemeTechnologies`;
+    
+    await axios.post(url, null, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         apikey: GUPSHUP_APP_TOKEN
       }
     });
   } catch (error) {
-    console.error('Failed to send WhatsApp message:', error);
+    console.error('Failed to send WhatsApp message:', error.response?.data || error.message);
   }
 };
 const getNextQuestion = (user) => {
