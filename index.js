@@ -386,7 +386,7 @@ app.post(
     // Proceed to message user, update DB, etc.
     await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
     res.sendStatus(200);
-  }
+  
 );
     
     // 5. Get eligible schemes and format message
