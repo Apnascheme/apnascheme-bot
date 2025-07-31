@@ -106,7 +106,6 @@ async function loadSchemes() {
   });
 }
 
-
 // Filter eligible schemes
 function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
@@ -119,7 +118,8 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     const occupationLower = occupation?.toLowerCase() || '';
     const userState = state?.toLowerCase()?.trim() || '';
     const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
- const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
+    
+    const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
     if (
       womenSchemes.some(word => schemeNameLower.includes(word)) &&
       !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)
@@ -196,8 +196,6 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
       const hasRationLower = hasRation?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
     }
-    // Filter logic remains the same as before
-    // ... (keep your existing filter logic here)
 
     return true;
   });
@@ -208,12 +206,11 @@ const mapAnswer = (lang, qIndex, rawInput) => {
   return mapping?.[rawInput] || rawInput;
 };
 
-
-// ... (Keep all your existing QUESTION, OPTION_MAPPINGS, loadSchemes(), 
-// getEligibleSchemes(), mapAnswer(), getNextQuestion() functions exactly as they are) ...
-
+// Enhanced sendMessage function with proper logging
 const sendMessage = async (phone, msg) => {
   try {
+    console.log(`[WHATSAPP ATTEMPT] To: ${phone}, Message Length: ${msg.length} chars`);
+    
     const encodedMessage = encodeURIComponent(msg);
     const url = `${BASE_URL}?channel=whatsapp&source=${GUPSHUP_PHONE_NUMBER}&destination=${phone}&message=${encodedMessage}&src.name=ApnaSchemeTechnologies`;
     
@@ -223,15 +220,17 @@ const sendMessage = async (phone, msg) => {
         apikey: GUPSHUP_APP_TOKEN
       }
     });
+    
+    console.log(`[WHATSAPP SENT] To: ${phone}, Status: ${response.data.status}, Response: ${JSON.stringify(response.data)}`);
     return response.data;
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error(`[WHATSAPP ERROR] To: ${phone}`, error.response?.data || error.message);
     throw error;
   }
 };
 
 const getNextQuestion = (user) => {
- const lang = user.language;
+  const lang = user.language;
   const q = QUESTIONS[lang];
   const res = user.responses;
 
@@ -281,11 +280,12 @@ const getNextQuestion = (user) => {
   return null; // Done
 };
 
-
 app.post('/gupshup', async (req, res) => {
   const data = req.body?.payload;
   const phone = data?.sender?.phone;
   const msg = data?.payload?.text?.toLowerCase().trim();
+
+  console.log(`[GUPSHUP WEBHOOK] Phone: ${phone}, Message: ${msg}`);
 
   if (!userContext[phone]) {
     if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
@@ -305,11 +305,15 @@ app.post('/gupshup', async (req, res) => {
   const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
   user.responses.push(mapped);
 
+  console.log(`[USER PROGRESS] Phone: ${phone}, Question: ${qIndex + 1}, Response: ${mapped}`);
+
   const next = getNextQuestion(user);
   if (next) {
     await sendMessage(phone, next);
   } else {
     const eligibleSchemes = getEligibleSchemes(user.responses);
+    
+    console.log(`[QUESTIONNAIRE COMPLETE] Phone: ${phone}, Eligible Schemes: ${eligibleSchemes.length}`);
     
     // Use your existing payment page with phone prefill
     const paymentUrl = `https://rzp.io/rzp/apnascheme?prefill[contact]=${phone}&notes[phone]=${phone}`;
@@ -347,6 +351,8 @@ app.post('/create-razorpay-order', async (req, res) => {
   try {
     const { phone, amount } = req.body;
     
+    console.log(`[RAZORPAY ORDER] Phone: ${phone}, Amount: ₹${amount}`);
+    
     // Validate input
     if (!phone || !amount) {
       return res.status(400).json({ error: 'Phone and amount are required' });
@@ -355,7 +361,7 @@ app.post('/create-razorpay-order', async (req, res) => {
     const options = {
       amount: amount * 100, // Convert rupees to paise
       currency: "INR",
-      receipt: `order_${Date.now()}_${phone}`, // Fixed template literal
+      receipt: `order_${Date.now()}_${phone}`,
       notes: { 
         phone,
         purpose: 'Scheme Eligibility Report' 
@@ -364,6 +370,9 @@ app.post('/create-razorpay-order', async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
+    
+    console.log(`[RAZORPAY ORDER CREATED] Order ID: ${order.id}, Phone: ${phone}`);
+    
     res.json({
       id: order.id,
       currency: order.currency,
@@ -371,37 +380,57 @@ app.post('/create-razorpay-order', async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID
     });
   } catch (error) {
-    console.error("Order creation failed:", error);
+    console.error("[RAZORPAY ORDER ERROR]", error);
     res.status(500).json({ error: "Payment processing error" });
   }
 });
+
+// Enhanced payment success handler with comprehensive logging
 app.post('/payment-success', async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, phone } = req.body;
     
+    console.log(`[PAYMENT SUCCESS] Payment ID: ${razorpay_payment_id}, Order ID: ${razorpay_order_id}, Phone: ${phone}`);
+    
     // Validate input
     if (!razorpay_payment_id || !phone) {
+      console.error(`[PAYMENT ERROR] Missing payment details - Payment ID: ${razorpay_payment_id}, Phone: ${phone}`);
       return res.status(400).json({ error: 'Missing payment details' });
     }
 
+    // Check if user context exists
+    if (!userContext[phone]) {
+      console.error(`[PAYMENT ERROR] No user context found for phone: ${phone}`);
+      console.log(`[DEBUG] Available user contexts: ${Object.keys(userContext)}`);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User context not found. Please restart the questionnaire.',
+        available_contexts: Object.keys(userContext).length
+      });
+    }
+
+    console.log(`[USER CONTEXT FOUND] Phone: ${phone}, Language: ${userContext[phone].language}, Responses: ${userContext[phone].responses.length}`);
+
+    // Verify payment with Razorpay
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    console.log(`[RAZORPAY VERIFICATION] Payment Status: ${payment.status}, Amount: ₹${payment.amount/100}`);
     
     if (payment.status !== 'captured') {
+      console.error(`[PAYMENT ERROR] Payment not captured: ${payment.status}`);
       return res.status(400).json({ error: 'Payment not captured' });
     }
 
     if (payment.order_id !== razorpay_order_id) {
+      console.error(`[PAYMENT ERROR] Order ID mismatch: Expected ${razorpay_order_id}, Got ${payment.order_id}`);
       return res.status(400).json({ error: 'Order ID mismatch' });
     }
 
     const user = userContext[phone];
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
     const eligibleSchemes = getEligibleSchemes(user.responses);
+    
+    console.log(`[SCHEMES CALCULATION] Phone: ${phone}, Eligible Schemes: ${eligibleSchemes.length}`);
 
-    // Send confirmation
+    // Send confirmation message first
     let initialMsg = '';
     if (user.language === '1') {
       initialMsg = `✅ भुगतान सफल! आप ${eligibleSchemes.length} योजनाओं के पात्र हैं:\n\n`;
@@ -411,40 +440,87 @@ app.post('/payment-success', async (req, res) => {
       initialMsg = `✅ Payment successful! You're eligible for ${eligibleSchemes.length} schemes:\n\n`;
     }
 
-    // Send initial message
+    // Send initial confirmation
     await sendMessage(phone, initialMsg);
+    console.log(`[CONFIRMATION SENT] Phone: ${phone}`);
 
-    // Send scheme details
+    // Send scheme details with better error handling
+    let sentCount = 0;
     for (let i = 0; i < eligibleSchemes.length; i++) {
-      const scheme = eligibleSchemes[i];
-      let schemeMsg = '';
-      
-      if (user.language === '1') {
-        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'आवेदन लिंक'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
-      } else if (user.language === '3') {
-        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'अर्ज लिंक'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
-      } else {
-        schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'Apply link'}\n📝 ${scheme.ApplicationMode || 'Online/Offline'}`;
+      try {
+        const scheme = eligibleSchemes[i];
+        let schemeMsg = '';
+        
+        if (user.language === '1') {
+          schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'आवेदन लिंक उपलब्ध नहीं'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
+        } else if (user.language === '3') {
+          schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'अर्ज लिंक उपलब्ध नाही'}\n📝 ${scheme.ApplicationMode || 'ऑनलाइन/ऑफलाइन'}`;
+        } else {
+          schemeMsg = `${i+1}. ${scheme.SchemeName}\n🔗 ${scheme.OfficialLink || 'Application link not available'}\n📝 ${scheme.ApplicationMode || 'Online/Offline'}`;
+        }
+        
+        await sendMessage(phone, schemeMsg);
+        sentCount++;
+        console.log(`[SCHEME SENT] ${i+1}/${eligibleSchemes.length} - ${scheme.SchemeName}`);
+        
+        // Add delay every 2 messages to avoid rate limiting
+        if (i % 2 === 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        console.error(`[SCHEME SEND ERROR] Scheme ${i+1}: ${error.message}`);
+        // Continue with next scheme even if one fails
       }
-      
-      await sendMessage(phone, schemeMsg);
-      
-      // Add delay every 2 messages to avoid rate limiting
-      if (i % 2 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Clear user context
+    // Send completion message
+    let completionMsg = '';
+    if (user.language === '1') {
+      completionMsg = `🎉 सभी ${sentCount} योजनाओं की जानकारी भेज दी गई!\n\nधन्यवाद ApnaScheme का उपयोग करने के लिए! 🙏`;
+    } else if (user.language === '3') {
+      completionMsg = `🎉 सर्व ${sentCount} योजनांची माहिती पाठवली!\n\nApnaScheme वापरल्याबद्दल धन्यवाद! 🙏`;
+    } else {
+      completionMsg = `🎉 All ${sentCount} scheme details sent!\n\nThank you for using ApnaScheme! 🙏`;
+    }
+    
+    await sendMessage(phone, completionMsg);
+    console.log(`[COMPLETION MESSAGE SENT] Phone: ${phone}, Total schemes sent: ${sentCount}`);
+
+    // Clear user context after successful delivery
     delete userContext[phone];
+    console.log(`[USER CONTEXT CLEARED] Phone: ${phone}`);
     
     res.status(200).json({ 
       success: true,
-      schemes: eligibleSchemes.length
+      schemes_eligible: eligibleSchemes.length,
+      schemes_sent: sentCount,
+      message: 'Payment successful and schemes delivered'
     });
+    
   } catch (error) {
-    console.error('Payment success error:', error);
-    res.status(500).json({ error: 'Failed to process payment' });
+    console.error('[PAYMENT SUCCESS ERROR]', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to process payment success',
+      details: error.message 
+    });
   }
 });
+
+// Add endpoint to check user context (for debugging)
+app.get('/debug/user-context/:phone', (req, res) => {
+  const phone = req.params.phone;
+  const context = userContext[phone];
+  
+  res.json({
+    phone,
+    exists: !!context,
+    context: context || null,
+    total_active_users: Object.keys(userContext).length,
+    active_phones: Object.keys(userContext)
+  });
+});
+
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running');
 });
@@ -453,6 +529,8 @@ app.listen(PORT, async () => {
   try {
     await loadSchemes();
     console.log(`🚀 Server live on port ${PORT} | ${schemes.length} schemes loaded`);
+    console.log(`📱 WhatsApp API: ${BASE_URL}`);
+    console.log(`💳 Razorpay: ${process.env.RAZORPAY_KEY_ID ? 'Configured' : 'Not configured'}`);
   } catch (err) {
     console.error('Failed to load schemes:', err);
     process.exit(1);
