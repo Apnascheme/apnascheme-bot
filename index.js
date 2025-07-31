@@ -4,6 +4,7 @@ import axios from 'axios';
 import ExcelJS from 'exceljs';
 import crypto from 'crypto'; 
 import Razorpay from 'razorpay';
+import bodyParser from 'body-parser';
 dotenv.config();
 
 const app = express();
@@ -344,11 +345,11 @@ app.get('/', (req, res) => {
 
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/razorpay-webhook', bodyParser.raw({ type: 'application/json' }), (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    const body = req.body; // raw buffer here
+    const body = req.body.toString(); // raw buffer here
 
     // Compute expected signature
     const expectedSignature = crypto
