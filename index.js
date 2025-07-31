@@ -342,44 +342,40 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) => {
-    try {
-      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-      const razorpaySignature = req.headers['x-razorpay-signature'];
-      const rawBody = req.body;
+);
+      app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    const rawBody = req.body;
 
-      // Calculate expected signature
-      const crypto = require('crypto');
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(req.body); // this works now, because req.body is Buffer
-  const digest = hmac.digest('hex');
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(rawBody);
+    const digest = hmac.digest('hex');
 
-        if (digest === expectedSignature) {
-        console.warn('⚠️ Invalid Razorpay signature');
-        return res.status(401).send('Unauthorized');
-      }
+    if (digest !== razorpaySignature) {
+      console.warn('⚠️ Invalid Razorpay signature');
+      return res.status(401).send('Unauthorized');
+    }
 
-      // Parse body after verification
-      const payload = JSON.parse(rawBody.toString('utf8'));
-      const payment = payload?.payload?.payment?.entity;
+    const payload = JSON.parse(rawBody.toString('utf8'));
+    const payment = payload?.payload?.payment?.entity;
 
-      if (!payment || payment.status !== 'captured') {
-        console.warn('❌ Not a captured payment');
-        return res.status(400).send('Invalid payment');
-      }
+    if (!payment || payment.status !== 'captured') {
+      console.warn('❌ Not a captured payment');
+      return res.status(400).send('Invalid payment');
+    }
 
-      const userPhone = payment.notes?.phone;
-      if (!userPhone || !userContext[userPhone]) {
-        console.warn('❓ User context not found for phone:', userPhone);
-        return res.status(404).send('User not found');
-      }
+    const userPhone = payment.notes?.phone;
+    if (!userPhone || !userContext[userPhone]) {
+      console.warn('❓ User context not found for phone:', userPhone);
+      return res.status(404).send('User not found');
+    }
 
-      const user = userContext[userPhone];
-      console.log('✅ Payment verified for user:', userPhone);
+    const user = userContext[userPhone];
+    console.log('✅ Payment verified for user:', userPhone);
 
-      // Send initial confirmation
-      await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
-
+    await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
       // Get eligible schemes
       const eligibleSchemes = getEligibleSchemes(user.responses);
       const lang = user.language || '2';
