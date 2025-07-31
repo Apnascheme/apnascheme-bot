@@ -355,26 +355,26 @@ app.post('/create-razorpay-order', async (req, res) => {
     const options = {
       amount: amount * 100, // Convert rupees to paise
       currency: "INR",
-      receipt: order_${Date.now()}_${phone},
+      receipt: `order_${Date.now()}_${phone}`, // Fixed template literal
       notes: { 
         phone,
         purpose: 'Scheme Eligibility Report' 
       },
       payment_capture: 1 // Auto-capture payments
     };
-const order = await razorpay.orders.create(options);
+
+    const order = await razorpay.orders.create(options);
     res.json({
       id: order.id,
       currency: order.currency,
       amount: order.amount,
-      key: process.env.RAZORPAY_KEY_ID // Send key for client-side integration
+      key: process.env.RAZORPAY_KEY_ID
     });
   } catch (error) {
     console.error("Order creation failed:", error);
     res.status(500).json({ error: "Payment processing error" });
   }
 });
-
 app.post('/payment-success', async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, phone } = req.body;
@@ -383,7 +383,8 @@ app.post('/payment-success', async (req, res) => {
     if (!razorpay_payment_id || !phone) {
       return res.status(400).send('Missing payment details');
     }
-  const payment = await razorpay.payments.fetch(razorpay_payment_id);
+
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
     
     if (payment.status !== 'captured') {
       return res.status(400).send('Payment not captured');
@@ -397,6 +398,9 @@ app.post('/payment-success', async (req, res) => {
     if (!user) {
       return res.status(404).send('User not found');
     }
+
+
+
 
 
 
