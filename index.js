@@ -346,16 +346,15 @@ app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) 
       const rawBody = req.body;
 
       // Calculate expected signature
-     const expectedSignature = razorpaySignature;
+   
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(req.body); // this works now, because req.body is Buffer
   const digest = hmac.digest('hex');
 
-        if (digest === expectedSignature) {
-        console.warn('⚠ Invalid Razorpay signature');
-        return res.status(401).send('Unauthorized');
-      }
-
+        if (digest !== razorpaySignature) {
+  console.warn('⚠ Invalid Razorpay signature');
+  return res.status(401).send('Unauthorized');
+}
       // Parse body after verification
       const payload = JSON.parse(rawBody.toString('utf8'));
       const payment = payload?.payload?.payment?.entity;
