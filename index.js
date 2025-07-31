@@ -348,19 +348,22 @@ app.post('/razorpay-webhook', async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    const body = req.body.toString();
+   const body = req.body; // this will now be raw buffer due to express.raw()
 
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex');
+
+  const expectedSignature = crypto
+  .createHmac('sha256', secret)
+  .update(body)
+  .digest('hex');
+
 
     if (signature !== expectedSignature) {
       console.warn('⚠️ Invalid Razorpay signature');
       return res.status(401).send('Unauthorized');
     }
 
-    const payload = JSON.parse(body);
+    const payload = JSON.parse(body.toString());
+
     const payment = payload?.payload?.payment?.entity;
 
     if (!payment || payment.status !== 'captured') {
