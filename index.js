@@ -342,23 +342,19 @@ app.post('/gupshup', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
-
-app.post(
-  '/razorpay-webhook',
-  bodyParser.raw({ type: 'application/json' }),
-  async (req, res) => {
+app.post('/webhook', express.raw({ type: 'application/json' }),async (req, res) => {
     try {
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
       const razorpaySignature = req.headers['x-razorpay-signature'];
       const rawBody = req.body;
 
       // Calculate expected signature
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(rawBody)
-        .digest('hex');
+      const crypto = require('crypto');
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(req.body); // this works now, because req.body is Buffer
+  const digest = hmac.digest('hex');
 
-      if (razorpaySignature !== expectedSignature) {
+        if (digest === expectedSignature) {
         console.warn('⚠️ Invalid Razorpay signature');
         return res.status(401).send('Unauthorized');
       }
