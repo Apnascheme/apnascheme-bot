@@ -355,7 +355,6 @@ app.use('/razorpay-webhook', async (req, res, next) => {
 
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-const userContext = {}; // assuming you define this elsewhere
 
 app.post('/razorpay-webhook', async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
