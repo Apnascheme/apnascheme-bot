@@ -343,27 +343,30 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-app.post('/razorpay-webhook', bodyParser.raw({ type: 'application/json' }), async (req, res) => {
-  try {
+
+
+app.post(
+  '/razorpay-webhook',
+  bodyParser.raw({ type: 'application/json' }), // Must come BEFORE the handler
+  async (req, res) => {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-    const body = req.body.toString(); // raw buffer here
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    const rawBody = req.body; // This is already a Buffer
 
-    // Compute expected signature
+    // Calculate expected signature using raw buffer
     const expectedSignature = crypto
       .createHmac('sha256', secret)
-      .update(body)
+      .update(rawBody)
       .digest('hex');
 
-    if (signature !== expectedSignature) {
+    if (razorpaySignature !== expectedSignature) {
       console.warn('⚠️ Invalid Razorpay signature');
       return res.status(401).send('Unauthorized');
     }
 
-    // Only parse after signature is validated
-    const payload = JSON.parse(body.toString('utf8'));
+    // Parse body after verification
+    const payload = JSON.parse(rawBody.toString('utf8'));
     const payment = payload?.payload?.payment?.entity;
 
     if (!payment || payment.status !== 'captured') {
@@ -379,6 +382,13 @@ app.post('/razorpay-webhook', bodyParser.raw({ type: 'application/json' }), asyn
 
     const user = userContext[userPhone];
     console.log('✅ Payment verified for user:', userPhone);
+
+    // Proceed to message user, update DB, etc.
+    await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
+    res.sendStatus(200);
+  }
+);
+    
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
