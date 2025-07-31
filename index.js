@@ -344,39 +344,40 @@ app.get('/', (req, res) => {
 
 app.use('/razorpay-webhook', express.raw({ type: 'application/json' }));
 
-app.post('/razorpay-webhook', async (req, res) => {
+app.post('/razorpay-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-   const body = req.body; // this will now be raw buffer due to express.raw()
+    const body = req.body; // raw buffer here
 
-
-  const expectedSignature = crypto
-  .createHmac('sha256', secret)
-  .update(body)
-  .digest('hex');
-
+    // Compute expected signature
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body)
+      .digest('hex');
 
     if (signature !== expectedSignature) {
       console.warn('⚠️ Invalid Razorpay signature');
       return res.status(401).send('Unauthorized');
     }
 
-    const payload = JSON.parse(body.toString());
-
+    // Only parse after signature is validated
+    const payload = JSON.parse(body.toString('utf8'));
     const payment = payload?.payload?.payment?.entity;
 
     if (!payment || payment.status !== 'captured') {
-      return res.status(400).send('Not a captured payment');
+      console.warn('❌ Not a captured payment');
+      return res.status(400).send('Invalid payment');
     }
 
     const userPhone = payment.notes?.phone;
     if (!userPhone || !userContext[userPhone]) {
-      console.warn('User context not found for phone:', userPhone);
+      console.warn('❓ User context not found for phone:', userPhone);
       return res.status(404).send('User not found');
     }
 
     const user = userContext[userPhone];
+    console.log('✅ Payment verified for user:', userPhone);
     // 5. Get eligible schemes and format message
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2'; // Default to English
