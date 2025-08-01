@@ -283,7 +283,7 @@ const getNextQuestion = (user) => {
   return null; // Done
 };
 
-app.post('/gupshup', async (req, res) => {
+app.post('/gupshup',express.json(),async (req, res) => {
   const data = req.body?.payload;
   const phone = data?.sender?.phone;
   const msg = data?.payload?.text?.toLowerCase().trim();
@@ -347,31 +347,32 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-   app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (req, res) => {
+ // Fix for the Razorpay webhook
+app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
   try {
-      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-      const razorpaySignature = req.headers['x-razorpay-signature'];
-      const rawBody = req.body;
-
-   if (!rawBody) {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    
+    if (!req.body) {
       console.log('⚠️ Raw body missing');
       return res.status(400).send('Missing raw body');
     }
 
-  
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(req.body); // this works now, because req.body is Buffer
+    // Create HMAC SHA256 hash using the secret
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(req.body.toString()); // Convert buffer to string
     const generatedSignature = hmac.digest('hex');
 
-        if (generatedSignature === expectedSignature) {
-        console.warn('⚠️ Invalid Razorpay signature');
-        return res.status(401).send('Unauthorized');
-      }
-
+    if (generatedSignature !== razorpaySignature) {
+      console.warn('⚠️ Invalid Razorpay signature');
+      return res.status(401).send('Unauthorized');
+    }
 
     console.log('✅ Webhook signature verified');
-
-    const payment = req.body?.payload?.payment?.entity;
+    
+    // Parse the JSON body after verification
+    const webhookBody = JSON.parse(req.body.toString());
+    const payment = webhookBody?.payload?.payment?.entity;
 
     if (!payment || payment.status !== 'captured') {
       console.warn('❌ Not a captured payment');
