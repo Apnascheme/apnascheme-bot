@@ -14,7 +14,6 @@ app.use('/razorpay-webhook', bodyParser.json({
   }
 }));
 
-
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
 const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
@@ -348,7 +347,7 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
-app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (req, res) => {
+   app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (req, res) => {
   try {
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
       const razorpaySignature = req.headers['x-razorpay-signature'];
@@ -381,7 +380,7 @@ app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (r
 
     const phone = payment.notes?.phone;
     if (!phone || !userContext[phone]) {
-      console.warn('❓ User context not found for phone:', userPhone);
+      console.warn('❓ User context not found for phone:', phone);
       return res.status(404).send('User not found');
     }
 
@@ -391,42 +390,48 @@ app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (r
     // 1st message: simple confirmation
     await sendMessage(phone, '✅ Payment received. Your yojana list is ready...');
 
-    // Prepare final message
-    const eligibleSchemes = getEligibleSchemes(user.responses);
-    const lang = user.language || '2';
 
-    let message;
-    if (lang === '1') { // Hindi
-      message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(s => {
-        message += `• ${s.SchemeName}\n🔗 आवेदन: ${s.OfficialLink}\n📝 तरीका: ${s.ApplicationMode}\n\n`;
-      });
-      message += `📄 रसीद ID: ${payment.id}`;
-    } else if (lang === '3') { // Marathi
-      message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(s => {
-        message += `• ${s.SchemeName}\n🔗 अर्ज: ${s.OfficialLink}\n📝 पद्धत: ${s.ApplicationMode}\n\n`;
-      });
-      message += `📄 पावती ID: ${payment.id}`;
-    } else { // English
-      message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
-      eligibleSchemes.forEach(s => {
-        message += `• ${s.SchemeName}\n🔗 Apply: ${s.OfficialLink}\n📝 Mode: ${s.ApplicationMode}\n\n`;
-      });
-      message += `📄 Receipt ID: ${payment.id}`;
+      // Get eligible schemes
+      const eligibleSchemes = getEligibleSchemes(user.responses);
+      const lang = user.language || '2';
+
+      // Format message based on language
+      let message;
+      if (lang === '1') { // Hindi
+        message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
+        eligibleSchemes.forEach(scheme => {
+          message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
+        });
+        message += `📄 रसीद ID: ${payment.id}`;
+      } 
+      else if (lang === '3') { // Marathi
+        message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
+        eligibleSchemes.forEach(scheme => {
+          message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
+        });
+        message += `📄 पावती ID: ${payment.id}`;
+      } 
+      else { // English
+        message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
+        eligibleSchemes.forEach(scheme => {
+          message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
+        });
+        message += `📄 Receipt ID: ${payment.id}`;
+      }
+
+      // Send detailed message
+      await sendMessage(phone, message);
+      console.log(`📩 Sent schemes to ${phone}`);
+
+      // Cleanup
+      delete userContext[userPhone];
+      res.status(200).send('Success');
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(500).send('Server error');
     }
-
-    // Final message with scheme list
-    await sendMessage(phone, message);
-    console.log(`📩 Sent schemes to ${phone}`);
-
-    delete userContext[phone]; // Clean up
-    res.status(200).send('Success');
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).send('Server error');
   }
-});
+);
 
 
 app.listen(PORT, async () => {
