@@ -361,9 +361,9 @@ app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (r
     }
 
     const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(req.body)
-      .digest('hex');
+      const hmac = crypto.createHmac('sha256', webhookSecret);
+      hmac.update(req.body)
+      const digest=hmac.digest('hex');
 
     if (expectedSignature !== razorpaySignature) {
       console.log('⚠️ Invalid webhook signature!');
