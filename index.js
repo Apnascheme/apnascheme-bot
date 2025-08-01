@@ -381,7 +381,7 @@ app.get('/', (req, res) => {
 });
 
  // Fix for the Razorpay webhook
-app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
+app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const razorpaySignature = req.headers['x-razorpay-signature'];
@@ -393,7 +393,7 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
 
     // Create HMAC SHA256 hash using the secret
     const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(req.body.toString()); // Convert buffer to string
+    hmac.update(req.body); // Convert buffer to string
     const generatedSignature = hmac.digest('hex');
 
     if (generatedSignature !== razorpaySignature) {
