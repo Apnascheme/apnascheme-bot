@@ -283,64 +283,97 @@ const getNextQuestion = (user) => {
   return null; // Done
 };
 
-app.post('/gupshup',express.json(),async (req, res) => {
-  const data = req.body?.payload;
-  const phone = data?.sender?.phone;
-  const msg = data?.payload?.text?.toLowerCase().trim();
+app.post('/gupshup', express.json(), async (req, res) => {
+  try {
+    // Validate request body structure
+    if (!req.body || !req.body.payload) {
+      console.warn('Invalid request structure', req.body);
+      return res.status(400).send('Invalid request structure');
+    }
 
-  if (!userContext[phone]) {
-    if (msg.includes('1')) userContext[phone] = { language: '1', responses: [] };
-    else if (msg.includes('2')) userContext[phone] = { language: '2', responses: [] };
-    else if (msg.includes('3')) userContext[phone] = { language: '3', responses: [] };
-    else {
-      await sendMessage(phone, "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\nMain aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n1. हिंदी\n2. English\n3. मराठी");
+    const data = req.body.payload;
+    const phone = data?.sender?.phone;
+    const msg = data?.payload?.text?.toLowerCase()?.trim() || '';
+
+    // Validate required fields
+    if (!phone) {
+      console.warn('Missing phone number in request');
+      return res.status(400).send('Missing phone number');
+    }
+
+    // Initialize user context if it doesn't exist
+    if (!userContext[phone]) {
+      // Default to Hindi if no valid language selection
+      if (msg.includes('1')) {
+        userContext[phone] = { language: '1', responses: [] };
+      } else if (msg.includes('2')) {
+        userContext[phone] = { language: '2', responses: [] };
+      } else if (msg.includes('3')) {
+        userContext[phone] = { language: '3', responses: [] };
+      } else {
+        // Send language selection prompt
+        await sendMessage(phone, 
+          "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\n" +
+          "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n" +
+          "🗣️ Apni bhaasha chunein\n(Please select 1, 2, 3 to answer):\n" +
+          "1. हिंदी\n2. English\n3. मराठी"
+        );
+        return res.sendStatus(200);
+      }
+
+      const firstQuestion = getNextQuestion(userContext[phone]);
+      await sendMessage(phone, firstQuestion);
       return res.sendStatus(200);
     }
 
-    const firstQuestion = getNextQuestion(userContext[phone]);
-    await sendMessage(phone, firstQuestion);
-    return res.sendStatus(200);
-  }
-
-  const user = userContext[phone];
-  const qIndex = user.responses.length;
-  const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
-  user.responses.push(mapped);
-
-  const next = getNextQuestion(user);
-  if (next) {
-    await sendMessage(phone, next);
- } else {
-    const eligibleSchemes = getEligibleSchemes(user.responses);
+    // Process existing user response
+    const user = userContext[phone];
+    const qIndex = user.responses.length;
     
-    let closingMessage = "";
-    if (user.language === '1') {
-        closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n`
-                      + ` सिर्फ ₹49 में पाएं:\n`
-                      + ` आपके लिए सभी योजनाओं की पूरी लिस्ट\n`
-                      + ` सीधे आवेदन करने के लिंक\n\n`
-                      + ` अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme\n\n`
-                      + ` ऑफर सीमित समय के लिए!`;
-    } else if (user.language === '2') {
-        closingMessage = ` You're eligible for ${eligibleSchemes.length} government schemes!\n\n`
-                      + ` For just ₹49 get:\n`
-                      + ` Complete list of all schemes\n`
-                      + ` Direct application links\n\n`
-                      + ` Make payment now: \nhttps://rzp.io/rzp/apnascheme\n\n`
-                      + ` Limited time offer!`;
-    } else if (user.language === '3') {
-        closingMessage = ` तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n`
-                      + ` फक्त ₹49 मध्ये मिळवा:\n`
-                      + ` तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n`
-                      + ` थेट अर्ज करण्याचे लिंक\n\n`
-                      + ` आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme\n\n`
-                      + ` मर्यादित वेळ ऑफर!`;
+    // Map the answer based on language and question index
+    const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
+    user.responses.push(mapped);
+
+    // Get and send next question or final message
+    const next = getNextQuestion(user);
+    if (next) {
+      await sendMessage(phone, next);
+    } else {
+      // User has answered all questions - show eligible schemes
+      const eligibleSchemes = getEligibleSchemes(user.responses);
+      
+      let closingMessage = "";
+      if (user.language === '1') { // Hindi
+        closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n` +
+                      `सिर्फ ₹49 में पाएं:\n` +
+                      `आपके लिए सभी योजनाओं की पूरी लिस्ट\n` +
+                      `सीधे आवेदन करने के लिंक\n\n` +
+                      `अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `ऑफर सीमित समय के लिए!`;
+      } else if (user.language === '2') { // English
+        closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n` +
+                      `For just ₹49 get:\n` +
+                      `Complete list of all schemes\n` +
+                      `Direct application links\n\n` +
+                      `Make payment now: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `Limited time offer!`;
+      } else { // Marathi (default to 3)
+        closingMessage = `तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n` +
+                      `फक्त ₹49 मध्ये मिळवा:\n` +
+                      `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n` +
+                      `थेट अर्ज करण्याचे लिंक\n\n` +
+                      `आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `मर्यादित वेळ ऑफर!`;
+      }
+
+      await sendMessage(phone, closingMessage);
     }
 
-    await sendMessage(phone, closingMessage);
-  
-}
-  res.sendStatus(200);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error in /gupshup endpoint:', error);
+    res.status(500).send('Internal server error');
+  }
 });
 
 app.get('/', (req, res) => {
