@@ -359,13 +359,12 @@ app.post('/razorpay-webhook',bodyParser.raw({type:'application/json'}), async (r
       return res.status(400).send('Missing raw body');
     }
 
-    
-  const crypto = require('crypto');
+  
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(req.body); // this works now, because req.body is Buffer
-  const digest = hmac.digest('hex');
+    const generatedSignature = hmac.digest('hex');
 
-        if (digest === expectedSignature) {
+        if (generatedSignature === expectedSignature) {
         console.warn('⚠️ Invalid Razorpay signature');
         return res.status(401).send('Unauthorized');
       }
