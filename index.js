@@ -13,7 +13,7 @@ app.use('/razorpay-webhook', bodyParser.json({
     req.rawBody = buf;
   }
 }));
-app.use(express.json());
+
 
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
@@ -379,17 +379,17 @@ app.post('/razorpay-webhook', async (req, res) => {
       return res.status(400).send('Invalid payment');
     }
 
-    const userPhone = payment.notes?.phone;
-    if (!userPhone || !userContext[userPhone]) {
+    const phone = payment.notes?.phone;
+    if (!phone || !userContext[phone]) {
       console.warn('❓ User context not found for phone:', userPhone);
       return res.status(404).send('User not found');
     }
 
-    const user = userContext[userPhone];
-    console.log('✅ Payment verified for user:', userPhone);
+    const user = userContext[phone];
+    console.log('✅ Payment verified for user:', phone);
 
     // 1st message: simple confirmation
-    await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
+    await sendMessage(phone, '✅ Payment received. Your yojana list is ready...');
 
     // Prepare final message
     const eligibleSchemes = getEligibleSchemes(user.responses);
@@ -417,10 +417,10 @@ app.post('/razorpay-webhook', async (req, res) => {
     }
 
     // Final message with scheme list
-    await sendMessage(userPhone, message);
-    console.log(`📩 Sent schemes to ${userPhone}`);
+    await sendMessage(phone, message);
+    console.log(`📩 Sent schemes to ${phone}`);
 
-    delete userContext[userPhone]; // Clean up
+    delete userContext[phone]; // Clean up
     res.status(200).send('Success');
   } catch (error) {
     console.error('Webhook error:', error);
