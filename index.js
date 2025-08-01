@@ -343,22 +343,20 @@ app.get('/', (req, res) => {
   res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
 });
 
- app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const razorpaySignature = req.headers['x-razorpay-signature'];
-    const rawBody = req.body;
+app.post('/webhook', (req, res) => {
+  const razorpaySignature = req.headers['x-razorpay-signature'];
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    // Verify signature (base64, not hex)
-    const generatedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('base64');
-    if (generatedSignature !== razorpaySignature) {
-      console.warn('⚠ Invalid Razorpay signature');
-      return res.status(401).send('Unauthorized');
-    }
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBodyBuffer)
+    .digest('hex');
 
+  if (expectedSignature !== razorpaySignature) {
+    console.log('⚠️ Invalid webhook signature!');
+    return res.status(401).send('Invalid signature');
+  }
+ console.log('✅ Valid webhook received');
     const payload = JSON.parse(rawBody.toString('utf8'));
     const payment = payload?.payload?.payment?.entity;
 
