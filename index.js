@@ -380,6 +380,7 @@ app.post('/razorpay-webhook', (req, res) => {
 
       // Send initial confirmation
       await sendMessage(userPhone, '✅ Payment received. Your yojana list is ready...');
+});
 
       // Get eligible schemes
       const eligibleSchemes = getEligibleSchemes(user.responses);
