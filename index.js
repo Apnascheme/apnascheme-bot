@@ -15,7 +15,12 @@ const app = express();
 // Updated MongoDB connection with better error handling
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const MONGODB_URI = process.env.MONGODB_URI;
+    if (!MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined in environment variables');
+    }
+
+    await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
       retryWrites: true,
       w: 'majority'
@@ -23,9 +28,10 @@ const connectDB = async () => {
     console.log("✅ Connected to MongoDB");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-    process.exit(1); // Exit process with failure
+    process.exit(1);
   }
 };
+
 
 // Call this when starting your app
 connectDB();
