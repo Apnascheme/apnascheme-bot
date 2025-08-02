@@ -824,34 +824,34 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     // Format message with proper line breaks and links
     let message;
     if (lang === '1') { // Hindi
-      message = ` आप निम्नलिखित योजनाओं के लिए पात्र हैं।\nयहाँ योजनाओं के नाम और आवेदन लिंक दिए गए हैं:\n\n`;
+      message = ` योजनाओं के नाम और उनके आवेदन लिंक:\n\n`;
       eligibleSchemes.forEach(scheme => {
         message += `📌 ${scheme.SchemeName}\n` +
                    ` आवेदन: ${scheme.OfficialLink || 'लिंक उपलब्ध नहीं'}\n` +
                    ` विधि: ${scheme.ApplicationMode}\n\n`;
       });
-      message += ` रसीद ID: ${payment.id}\n` +
-                 `धन्यवाद!`;
+      message += `रसीद ID: ${payment.id}\n` +
+                 `धन्यवाद.`;
     } 
     else if (lang === '3') { // Marathi
-      message = ` तुम्ही खालील योजनांसाठी पात्र आहात.\nयेथे योजनांची नावे आणि अर्ज लिंक्स दिल्या आहेत:\n\n`;
+      message = ` योजनांची नावे आणि अर्ज लिंक:\n\n`;
       eligibleSchemes.forEach(scheme => {
         message += `📌 ${scheme.SchemeName}\n` +
                    ` अर्ज: ${scheme.OfficialLink || 'लिंक उपलब्ध नाही'}\n` +
                    ` पद्धत: ${scheme.ApplicationMode}\n\n`;
       });
-      message += ` पावती ID: ${payment.id}\n` +
-                 `धन्यवाद!`;
+      message += `पावती ID: ${payment.id}\n` +
+                 `धन्यवाद.`;
     } 
     else { // English (default)
-      message = ` You qualify for the following schemes.\nBelow are the scheme names and their application links:\n\n`;
+      message = ` Scheme names with their application links:\n\n`;
       eligibleSchemes.forEach(scheme => {
         message += `📌 ${scheme.SchemeName}\n` +
                    ` Apply: ${scheme.OfficialLink || 'Link not available'}\n` +
                    ` Mode: ${scheme.ApplicationMode}\n\n`;
       });
-      message += ` Receipt ID: ${payment.id}\n` +
-                 `Thank you!`;
+      message += `Receipt ID: ${payment.id}\n` +
+                 `Thank you.`;
     }
 
     // Ensure message length is within WhatsApp limits
@@ -897,8 +897,8 @@ app.post('/gupshup', express.json(), async (req, res) => {
         userContext[phone] = { language: '3', responses: [] };
       } else {
         await sendMessage(phone, 
-          "Namaste! Main hoon ApnaScheme - aapka Sarkari Saathi! 🇮🇳\n" +
-          "Mere saath, pata karein kaunsi FREE government schemes aapke liye hai:\n" +
+          "Namaste!\nMain hoon ApnaScheme - aapka Sarkari Saathi! 🇮🇳\n" +
+          "Mere saath, pata karein\nKaunsi FREE government schemes aapke liye hai:\n" +
           "Bina agents\nBina Form\nBina Confusion\n\n"+
           "🗣️ Apni bhaasha chunein\n(Reply 1/2/3 to answer):\n" +
           "1. हिंदी\n2. English\n3. मराठी"
@@ -925,26 +925,26 @@ app.post('/gupshup', express.json(), async (req, res) => {
       
       let closingMessage = "";
       if (user.language === '1') {
-        closingMessage = `रोमांचक खबर! आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n` +
-                      `केवल ₹49 में, तुरंत प्राप्त करें:\n` +
-                      `सभी पात्र योजनाओं की पूरी सूची\n` +
+        closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
+                      `केवल ₹49 में,\nतुरंत प्राप्त करें:\n` +
+                      `योजनाओं की पूरी सूची\n` +
                       `आसान एक्सेस के लिए सीधे आवेदन लिंक\n\n` +
-                      `तुरंत लाभ उठाएँ! सीमित समय ऑफर: \n${paymentUrl}\n\n` +
-                      `इन लाभों को मिस न करें!`;
+                      `तुरंत लाभ उठाएँ!\nसीमित समय ऑफर: \n${paymentUrl}\n\n` +
+                      `इन लाभों को मिस न करें.`;
       } else if (user.language === '2') {
-        closingMessage = `Exciting News! You Qualify for ${eligibleSchemes.length} government schemes!\n\n` +
-                      `For only ₹49,instantly receive:\n` +
-                      `Complete list of all eligible schemes\n` +
-                      `Direct application links for easy access\n\n` +
-                      `Act Now! Limited-time offer: \n${paymentUrl}\n\n` +
-                      `Don’t miss out on these benefits!`;
+        closingMessage = `Exciting News!\nYou Qualify for ${eligibleSchemes.length} government schemes.\n\n` +
+                      `For only ₹49,\ninstantly receive:\n` +
+                      `List of all eligible schemes\n` +
+                      `Direct application links\n\n` +
+                      `Act Now!\nLimited-time offer: \n${paymentUrl}\n\n` +
+                      `Don’t miss out on these benefits.`;
       } else {
-        closingMessage = `आनंददायी बातमी! तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n` +
-                      `फक्त ₹49 मध्ये, ताबडतोब मिळवा:\n` +
-                      `पात्र योजनांची संपूर्ण यादी\n` +
+        closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
+                      `फक्त ₹49 मध्ये,\nताबडतोब मिळवा:\n` +
+                      `योजनांची संपूर्ण यादी\n` +
                       `अर्जासाठी थेट लिंक\n\n` +
-                      `लगेच अर्ज करा! मर्यादित वेळ ऑफर: \n${paymentUrl}\n\n` +
-                      `या फायद्यांना चुकू नका!`;
+                      `लगेच अर्ज करा!\nमर्यादित वेळ ऑफर: \n${paymentUrl}\n\n` +
+                      `या फायद्यांना चुकू नका.`;
       }
 
       await sendMessage(phone, closingMessage);
