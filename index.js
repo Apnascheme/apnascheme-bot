@@ -512,7 +512,7 @@ app.get('/pay', async (req, res) => {
 <body>
     <div class="card">
         <h2>ApnaScheme Eligibility Plan</h2>
-        <div class="price">One-time payment of ₹49</div>
+        <div class="price">One-time payment of ₹1</div>
         
         <div id="payment-status" class="payment-status">
             <div class="loader"></div>
@@ -561,7 +561,7 @@ app.get('/pay', async (req, res) => {
               amount: data.amount,
               currency: data.currency,
               name: 'ApnaScheme',
-              description: '₹49 Eligibility Plan',
+              description: '₹1 Eligibility Plan',
               order_id: data.orderId,
               handler: function(response) {
                 window.location.href = '/success?phone=' + phone;
