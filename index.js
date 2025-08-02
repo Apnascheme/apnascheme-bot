@@ -100,8 +100,23 @@ async function loadSchemes() {
   
   schemes = [];
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber === 1) return; // Skip header
     
+    // Extract link properly
+    const linkCell = row.getCell(12);
+    let officialLink = '';
+    
+    // Handle different types of link values
+    if (linkCell.value) {
+      if (typeof linkCell.value === 'string') {
+        officialLink = linkCell.value.trim();
+      } else if (linkCell.value.text) {
+        officialLink = linkCell.value.text.trim(); // For hyperlinks
+      } else if (linkCell.value.hyperlink) {
+        officialLink = linkCell.value.hyperlink.trim(); // For Excel hyperlinks
+      }
+    }
+
     schemes.push({
       SchemeName: row.getCell(1).value,
       Category: row.getCell(2).value,
@@ -114,7 +129,7 @@ async function loadSchemes() {
       BankAccountRequired: row.getCell(9).value === 'Yes',
       AadhaarRequired: row.getCell(10).value === 'Yes',
       ApplicationMode: row.getCell(11).value,
-      OfficialLink: String(row.getCell(12).value || ''),
+      OfficialLink: officialLink, // Now guaranteed to be a string
       ActiveStatus: row.getCell(13).value
     });
   });
@@ -209,21 +224,33 @@ const mapAnswer = (lang, qIndex, rawInput) => {
 };
 
 const sendMessage = async (phone, msg) => {
-  await axios.post(BASE_URL, null, {
-    params: {
-      channel: 'whatsapp',
-      source: GUPSHUP_PHONE_NUMBER,
-      destination: phone,
-      message: msg,
-      'src.name': 'ApnaSchemeTechnologies'
-    },
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      apikey: GUPSHUP_APP_TOKEN
-    }
-  });
-};
+  try {
+    const response = await axios.post(BASE_URL, null, {
+      params: {
+        channel: 'whatsapp',
+        source: GUPSHUP_PHONE_NUMBER,
+        destination: phone,
+        message: msg,
+        'src.name': 'ApnaSchemeTechnologies'
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        apikey: GUPSHUP_APP_TOKEN
+      },
+      timeout: 10000 // 10 second timeout
+    });
 
+    console.log('Message sent successfully:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', {
+      phone: phone,
+      error: error.response?.data || error.message,
+      messageContent: msg.substring(0, 100) + '...' // Log first 100 chars
+    });
+    throw error;
+  }
+};
 const getNextQuestion = (user) => {
   const lang = user.language;
   const q = QUESTIONS[lang];
@@ -396,7 +423,7 @@ app.get('/success', (req, res) => {
       <div class="success">✅ Payment Successful!</div>
       <p>Thank you for your payment of ₹49.</p>
       <p>Your scheme details will be sent to you shortly on WhatsApp.</p>
-      <a href="https://wa.me/91${phone}" class="whatsapp-btn">Open WhatsApp</a>
+      <a href="https://wa.me/{phone}" class="whatsapp-btn">Open WhatsApp</a>
     </body>
     </html>
   `);
@@ -443,35 +470,49 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2';
 
+    // Format message with proper line breaks and links
     let message;
-    if (lang === '1') {
-      message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
+    if (lang === '1') { // Hindi
+      message = `✅ भुगतान सफल!\n\nआप ${eligibleSchemes.length} योजनाओं के लिए पात्र हैं:\n\n`;
       eligibleSchemes.forEach(scheme => {
-        // Ensure OfficialLink is a string
-        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
-        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${link || 'Link not available'}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
+        message += `📌 ${scheme.SchemeName}\n` +
+                   `🗓️ आवेदन: ${scheme.OfficialLink || 'लिंक उपलब्ध नहीं'}\n` +
+                   `📋 विधि: ${scheme.ApplicationMode}\n\n`;
       });
-      message += `📄 रसीद ID: ${payment.id}`;
-    } else if (lang === '3') {
-      message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
+      message += `📝 रसीद ID: ${payment.id}\n` +
+                 `धन्यवाद!`;
+    } 
+    else if (lang === '3') { // Marathi
+      message = `✅ पेमेंट यशस्वी!\n\nतुम्ही ${eligibleSchemes.length} योजनांसाठी पात्र आहात:\n\n`;
       eligibleSchemes.forEach(scheme => {
-        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
-        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${link || 'Link not available'}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
+        message += `📌 ${scheme.SchemeName}\n` +
+                   `🗓️ अर्ज: ${scheme.OfficialLink || 'लिंक उपलब्ध नाही'}\n` +
+                   `📋 पद्धत: ${scheme.ApplicationMode}\n\n`;
       });
-      message += `📄 पावती ID: ${payment.id}`;
-    } else {
-      message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
+      message += `📝 पावती ID: ${payment.id}\n` +
+                 `धन्यवाद!`;
+    } 
+    else { // English (default)
+      message = `✅ Payment Successful!\n\nYou're eligible for ${eligibleSchemes.length} schemes:\n\n`;
       eligibleSchemes.forEach(scheme => {
-        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
-        message += `• ${scheme.SchemeName}\n🔗 Apply: ${link || 'Link not available'}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
+        message += `📌 ${scheme.SchemeName}\n` +
+                   `🗓️ Apply: ${scheme.OfficialLink || 'Link not available'}\n` +
+                   `📋 Mode: ${scheme.ApplicationMode}\n\n`;
       });
-      message += `📄 Receipt ID: ${payment.id}`;
+      message += `📝 Receipt ID: ${payment.id}\n` +
+                 `Thank you!`;
+    }
+
+    // Ensure message length is within WhatsApp limits
+    if (message.length > 4096) {
+      message = message.substring(0, 4000) + "...\n\n(Message truncated due to length)";
     }
 
     // Send the message
     await sendMessage(phone, message);
     console.log(`📩 Sent schemes to ${phone}`);
 
+    // Clean up
     delete userContext[phone];
     res.status(200).send('Success');
   } catch (error) {
