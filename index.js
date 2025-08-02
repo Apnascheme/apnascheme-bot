@@ -307,7 +307,7 @@ app.get('/pay', async (req, res) => {
     </head>
     <body>
       <h2>ApnaScheme Eligibility Plan</h2>
-      <p>One-time payment of ₹1</p>
+      <p>One-time payment of ₹49</p>
       <div id="payment-status">
         <div class="loader"></div>
         <p>Loading payment...</p>
@@ -353,18 +353,14 @@ app.get('/pay', async (req, res) => {
             rzp.open();
             
             rzp.on('payment.failed', function(response) {
-              paymentStatus.innerHTML = `
-                <p class="error">Payment failed. Please try again.</p>
-                <a href="https://wa.me/91${phone}">Return to WhatsApp</a>
-              `;
+              paymentStatus.innerHTML = '<p class="error">Payment failed. Please try again.</p>' +
+                '<a href="https://wa.me/917977594397' + phone + '">Return to WhatsApp</a>';
             });
           })
           .catch(err => {
             console.error('Payment error:', err);
-            paymentStatus.innerHTML = `
-              <p class="error">Payment setup failed. Please try again later.</p>
-              <a href="https://wa.me/91${phone}">Return to WhatsApp</a>
-            `;
+            paymentStatus.innerHTML = '<p class="error">Payment setup failed. Please try again later.</p>' +
+              '<a href="https://wa.me/917977594397' + phone + '">Return to WhatsApp</a>';
           });
       </script>
     </body>
