@@ -299,11 +299,8 @@ app.get('/pay', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
- 
-  const razorpayKey = process.env.RAZORPAY_KEY_ID || '';
-
-  const html = `
-<html>
+  const html = `<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -460,24 +457,14 @@ app.get('/pay', async (req, res) => {
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
-        const phone = "${phone}";
+        const phone = '${phone}';
         const paymentStatus = document.getElementById('payment-status');
         
         function updateStatus(text, isError = false) {
-            const statusElement = document.createElement('p');
-            statusElement.className = 'status-text ' + (isError ? 'error' : '');
-            statusElement.textContent = text;
-            
-            paymentStatus.innerHTML = '';
-            paymentStatus.appendChild(statusElement);
-            
-            if (isError) {
-                const whatsappBtn = document.createElement('a');
-                whatsappBtn.href = 'https://wa.me/917977594397' + phone;
-                whatsappBtn.className = 'whatsapp-btn';
-                whatsappBtn.textContent = 'Return to WhatsApp';
-                paymentStatus.appendChild(whatsappBtn);
-            }
+            paymentStatus.innerHTML = \`
+                <p class="status-text \${isError ? 'error' : ''}">\${text}</p>
+                \${isError ? '<a href="https://wa.me/917977594397' + phone + '" class="whatsapp-btn">Return to WhatsApp</a>' : ''}
+            \`;
         }
         
         // Animate status text while loading
@@ -494,7 +481,7 @@ app.get('/pay', async (req, res) => {
             statusText.textContent = statusMessages[counter];
         }, 2000);
         
-        fetch('/order?phone=' + encodeURIComponent(phone))
+        fetch('/order?phone=' + phone)
           .then(res => res.json())
           .then(data => {
             clearInterval(textInterval);
@@ -505,14 +492,14 @@ app.get('/pay', async (req, res) => {
             }
 
             const options = {
-              key: "${razorpayKey.replace(/"/g, '\\"')}",
+              key: '${process.env.RAZORPAY_KEY_ID}',
               amount: data.amount,
               currency: data.currency,
               name: 'ApnaScheme',
               description: '₹1 Eligibility Plan',
               order_id: data.orderId,
               handler: function(response) {
-                window.location.href = '/success?phone=' + encodeURIComponent(phone);
+                window.location.href = '/success?phone=' + phone;
               },
               prefill: {
                 contact: phone
@@ -542,18 +529,16 @@ app.get('/pay', async (req, res) => {
           });
     </script>
 </body>
-</html>
- ; 
+</html>`;
+
   res.send(html);
 });
-
 app.get('/success', (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
- 
-  res.send(`
-<html>
+  const html = `<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -569,7 +554,7 @@ app.get('/success', (req, res) => {
             --text-light: #6B7280;
         }
         
-       *  {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -638,7 +623,7 @@ app.get('/success', (req, res) => {
             color: var(--text-dark);
         }
         
-         {
+        p {
             margin: 0.75rem 0;
             color: var(--text-medium);
             font-size: 1.05rem;
@@ -736,7 +721,7 @@ app.get('/success', (req, res) => {
         <div class="divider"></div>
         
         <a href="https://wa.me/${phone}" class="whatsapp-btn">
-            <span class="whatsapp-icon"></span>
+            <span class="whatsapp-icon">📱</span>
             Check on WhatsApp
         </a>
     </div>
@@ -772,8 +757,8 @@ app.get('/success', (req, res) => {
                 const duration = Math.random() * 1 + 1;
                 const delay = Math.random() * 0.5;
                 
-                confetti.style.transform = `rotate(${rotation}deg)`;
-                confetti.style.animation = `confettiFall ${duration}s ease-out ${delay}s forwards`;
+                confetti.style.transform = \`rotate(\${rotation}deg)\`;
+                confetti.style.animation = \`confettiFall \${duration}s ease-out \${delay}s forwards\`;
                 
                 confettiContainer.appendChild(confetti);
                 
@@ -790,8 +775,9 @@ app.get('/success', (req, res) => {
         });
     </script>
 </body>
-</html>
-  `);
+</html>`;
+
+  res.send(html);
 });
 
 app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
