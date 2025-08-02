@@ -304,7 +304,6 @@ app.get('/pay', async (req, res) => {
 
   const html = `
 <html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -544,7 +543,7 @@ app.get('/pay', async (req, res) => {
     </script>
 </body>
 </html>
-  
+ ; 
   res.send(html);
 });
 
@@ -555,7 +554,6 @@ app.get('/success', (req, res) => {
  
   res.send(`
 <html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
