@@ -102,18 +102,16 @@ async function loadSchemes() {
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return; // Skip header
     
-    // Extract link properly
     const linkCell = row.getCell(12);
     let officialLink = '';
     
-    // Handle different types of link values
     if (linkCell.value) {
       if (typeof linkCell.value === 'string') {
         officialLink = linkCell.value.trim();
       } else if (linkCell.value.text) {
-        officialLink = linkCell.value.text.trim(); // For hyperlinks
+        officialLink = linkCell.value.text.trim();
       } else if (linkCell.value.hyperlink) {
-        officialLink = linkCell.value.hyperlink.trim(); // For Excel hyperlinks
+        officialLink = linkCell.value.hyperlink.trim();
       }
     }
 
@@ -129,7 +127,7 @@ async function loadSchemes() {
       BankAccountRequired: row.getCell(9).value === 'Yes',
       AadhaarRequired: row.getCell(10).value === 'Yes',
       ApplicationMode: row.getCell(11).value,
-      OfficialLink: officialLink, // Now guaranteed to be a string
+      OfficialLink: officialLink,
       ActiveStatus: row.getCell(13).value
     });
   });
@@ -237,7 +235,7 @@ const sendMessage = async (phone, msg) => {
         'Content-Type': 'application/x-www-form-urlencoded',
         apikey: GUPSHUP_APP_TOKEN
       },
-      timeout: 10000 // 10 second timeout
+      timeout: 10000
     });
 
     console.log('Message sent successfully:', response.data);
@@ -246,11 +244,12 @@ const sendMessage = async (phone, msg) => {
     console.error('Error sending WhatsApp message:', {
       phone: phone,
       error: error.response?.data || error.message,
-      messageContent: msg.substring(0, 100) + '...' // Log first 100 chars
+      messageContent: msg.substring(0, 100) + '...'
     });
     throw error;
   }
 };
+
 const getNextQuestion = (user) => {
   const lang = user.language;
   const q = QUESTIONS[lang];
@@ -259,26 +258,6 @@ const getNextQuestion = (user) => {
   if (res.length === 0) return q[0];
   if (res.length === 1) return q[1];
   if (res.length === 2) return q[2];
-
-  let occupation = res[2]?.toLowerCase();
-
-  if (lang === '1') {
-    if (occupation === '1') occupation = 'छात्र';
-    else if (occupation === '2') occupation = 'बेरोज़गार';
-    else if (occupation === '3') occupation = 'नौकरीपेशा';
-    else if (occupation === '4') occupation = 'अन्य';
-  } else if (lang === '2') {
-    if (occupation === '1') occupation = 'student';
-    else if (occupation === '2') occupation = 'unemployed';
-    else if (occupation === '3') occupation = 'employed';
-    else if (occupation === '4') occupation = 'other';
-  } else if (lang === '3') {
-    if (occupation === '1') occupation = 'विद्यार्थी';
-    else if (occupation === '2') occupation = 'बेरोजगार';
-    else if (occupation === '3') occupation = 'नोकरी करता';
-    else if (occupation === '4') occupation = 'इतर';
-  }
-
   if (res.length === 3) return q[3];
   if (res.length === 4) return q[4];
   if (res.length === 5) return q[5];
@@ -320,8 +299,11 @@ app.get('/pay', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
+  const escapedPhone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
+  const razorpayKey = process.env.RAZORPAY_KEY_ID || '';
+
   const html = `
-   <html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -479,14 +461,24 @@ app.get('/pay', async (req, res) => {
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
-        const phone = '${phone}';
+        const phone = "${escapedPhone}";
         const paymentStatus = document.getElementById('payment-status');
         
         function updateStatus(text, isError = false) {
-            paymentStatus.innerHTML = `
-                <p class="status-text ${isError ? 'error' : ''}">${text}</p>
-                ${isError ? '<a href="https://wa.me/917977594397' + phone + '" class="whatsapp-btn">Return to WhatsApp</a>' : ''}
-            `;
+            const statusElement = document.createElement('p');
+            statusElement.className = 'status-text ' + (isError ? 'error' : '');
+            statusElement.textContent = text;
+            
+            paymentStatus.innerHTML = '';
+            paymentStatus.appendChild(statusElement);
+            
+            if (isError) {
+                const whatsappBtn = document.createElement('a');
+                whatsappBtn.href = 'https://wa.me/917977594397' + phone;
+                whatsappBtn.className = 'whatsapp-btn';
+                whatsappBtn.textContent = 'Return to WhatsApp';
+                paymentStatus.appendChild(whatsappBtn);
+            }
         }
         
         // Animate status text while loading
@@ -503,7 +495,7 @@ app.get('/pay', async (req, res) => {
             statusText.textContent = statusMessages[counter];
         }, 2000);
         
-        fetch('/order?phone=' + phone)
+        fetch('/order?phone=' + encodeURIComponent(phone))
           .then(res => res.json())
           .then(data => {
             clearInterval(textInterval);
@@ -514,14 +506,14 @@ app.get('/pay', async (req, res) => {
             }
 
             const options = {
-              key: '${process.env.RAZORPAY_KEY_ID}',
+              key: "${razorpayKey.replace(/"/g, '\\"')}",
               amount: data.amount,
               currency: data.currency,
               name: 'ApnaScheme',
               description: '₹1 Eligibility Plan',
               order_id: data.orderId,
               handler: function(response) {
-                window.location.href = '/success?phone=' + phone;
+                window.location.href = '/success?phone=' + encodeURIComponent(phone);
               },
               prefill: {
                 contact: phone
@@ -560,8 +552,10 @@ app.get('/success', (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
+  const escapedPhone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
+
   res.send(`
-    <html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -744,12 +738,11 @@ app.get('/success', (req, res) => {
         
         <div class="divider"></div>
         
-        <a href="https://wa.me/{phone}" class="whatsapp-btn">
-            <span class="whatsapp-icon"></span>
+        <a href="https://wa.me/${escapedPhone}" class="whatsapp-btn">
+            <span class="whatsapp-icon">📱</span>
             Check on WhatsApp
         </a>
-        
-            </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
