@@ -299,11 +299,11 @@ app.get('/pay', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
-  const escapedPhone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
+ 
   const razorpayKey = process.env.RAZORPAY_KEY_ID || '';
 
   const html = `
-<!DOCTYPE html>
+<html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -544,7 +544,7 @@ app.get('/pay', async (req, res) => {
     </script>
 </body>
 </html>
-  `;
+  
   res.send(html);
 });
 
@@ -552,10 +552,9 @@ app.get('/success', (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
-  const phone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
-
+ 
   res.send(`
-<!DOCTYPE html>
+<html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -572,7 +571,7 @@ app.get('/success', (req, res) => {
             --text-light: #6B7280;
         }
         
-        * {
+         {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
