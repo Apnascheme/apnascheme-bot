@@ -13,64 +13,57 @@ app.use('/razorpay-webhook', bodyParser.json({
     req.rawBody = buf;
   }
 }));
-app.post('/create-order', async (req, res) => {
+app.get('/pay', async (req, res) => {
+  const { phone } = req.query;
+
+  const options = {
+    amount: 4900,
+    currency: "INR",
+    receipt: `receipt_${Date.now()}`,
+    payment_capture: 1,
+  };
+
   try {
-    const { name, email, phone } = req.body;
+    const order = await razorpay.orders.create(options);
 
-    if (!phone) {
-      return res.status(400).json({ error: "Phone number is required" });
-    }
+    const html = `
+      <html>
+      <head><title>Pay ₹49 - ApnaScheme</title></head>
+      <body>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <script>
+          var options = {
+            "key": "${process.env.RAZORPAY_KEY_ID}",
+            "amount": "4900",
+            "currency": "INR",
+            "name": "ApnaScheme",
+            "description": "₹49 Eligibility Plan",
+            "order_id": "${order.id}", // use dynamic order_id here
+            "handler": function (response){
+                window.location.href = "/success?phone=${phone}";
+            },
+            "prefill": {
+                "contact": "${phone}"
+            },
+            "theme": {
+                "color": "#3399cc"
+            }
+          };
+          var rzp = new Razorpay(options);
+          rzp.open();
+        </script>
+      </body>
+      </html>
+    `;
 
-    const order = await razorpay.orders.create({
-      amount: 4900, // ₹49 in paise
-      currency: 'INR',
-      receipt: `order_rcptid_${Date.now()}`,
-      notes: {
-        name,
-        email,
-        phone
-      }
-    });
-
-    res.json({ order });
+    res.send(html);
   } catch (err) {
-    console.error("Order creation failed", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error creating Razorpay order:", err);
+    res.status(500).send("Payment setup failed.");
   }
 });
-app.get('/pay', (req, res) => {
-  const { phone } = req.query;
-  const html = `
-    <html>
-    <head><title>Pay ₹49 - ApnaScheme</title></head>
-    <body>
-      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-      <script>
-        var options = {
-          "key": "${process.env.RAZORPAY_KEY_ID}",
-          "amount": "4900",
-          "currency": "INR",
-          "name": "ApnaScheme",
-          "description": "₹49 Eligibility Plan",
-          "order_id": "${currentOrderId}", // inject order_id dynamically
-          "handler": function (response){
-              window.location.href = "/success?phone=${phone}";
-          },
-          "prefill": {
-              "contact": "${phone}"
-          },
-          "theme": {
-              "color": "#3399cc"
-          }
-        };
-        var rzp = new Razorpay(options);
-        rzp.open();
-      </script>
-    </body>
-    </html>
-  `;
-  res.send(html);
-});
+
+
 app.get('/success', async (req, res) => {
   const phone = req.query.phone;
   if (!phone) return res.send('Missing phone');
@@ -465,7 +458,7 @@ app.get('/', (req, res) => {
 });
 
  // Fix for the Razorpay webhook
-app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
+app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const razorpaySignature = req.headers['x-razorpay-signature'];
