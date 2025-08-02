@@ -461,7 +461,7 @@ app.get('/pay', async (req, res) => {
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
-        const phone = "${escapedPhone}";
+        const phone = "${phone}";
         const paymentStatus = document.getElementById('payment-status');
         
         function updateStatus(text, isError = false) {
@@ -552,7 +552,7 @@ app.get('/success', (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
 
-  const escapedPhone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
+  const phone = phone.replace(/"/g, '\\"').replace(/'/g, "\\'");
 
   res.send(`
 <!DOCTYPE html>
@@ -738,8 +738,8 @@ app.get('/success', (req, res) => {
         
         <div class="divider"></div>
         
-        <a href="https://wa.me/${escapedPhone}" class="whatsapp-btn">
-            <span class="whatsapp-icon">📱</span>
+        <a href="https://wa.me/${phone}" class="whatsapp-btn">
+            <span class="whatsapp-icon"></span>
             Check on WhatsApp
         </a>
     </div>
