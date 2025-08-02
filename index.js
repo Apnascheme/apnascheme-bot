@@ -569,7 +569,7 @@ app.get('/success', (req, res) => {
             --text-light: #6B7280;
         }
         
-         {
+       *  {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -638,7 +638,7 @@ app.get('/success', (req, res) => {
             color: var(--text-dark);
         }
         
-        p {
+         {
             margin: 0.75rem 0;
             color: var(--text-medium);
             font-size: 1.05rem;
