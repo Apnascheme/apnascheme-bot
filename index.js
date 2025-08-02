@@ -73,7 +73,7 @@ app.get('/success', async (req, res) => {
     channel: "whatsapp",
     source: GUPSHUP_PHONE_NUMBER,
     destination: phone,
-    'src.name': GUPSHUP_BOTNAME,
+    'src.name': 'ApnaSchemeTechnologies',
     message: {
       type: "text",
       text: `✅ Payment received! Aapke liye jo full Yojana list hai, wo ab bheji ja rahi hai.`
