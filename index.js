@@ -321,35 +321,195 @@ app.get('/pay', async (req, res) => {
   if (!phone) return res.status(400).send('Phone number required');
 
   const html = `
-    <html>
-    <head>
-      <title>Pay ₹1 - ApnaScheme</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        .loader { margin: 50px auto; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .error { color: red; }
-      </style>
-    </head>
-    <body>
-      <h2>ApnaScheme Eligibility Plan</h2>
-      <p>One-time payment of ₹49</p>
-      <div id="payment-status">
-        <div class="loader"></div>
-        <p>Loading payment...</p>
-      </div>
+   <html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>₹1 Eligibility Plan - ApnaScheme</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-light: #DBEAFE;
+            --error: #DC2626;
+            --text-dark: #1F2937;
+            --text-medium: #4B5563;
+            --text-light: #6B7280;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+            color: var(--text-medium);
+            line-height: 1.5;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 3rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transform: translateY(0);
+            animation: floatUp 0.6s ease-out forwards;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary) 0%, #3B82F6 100%);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+        
+        .price {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 2rem;
+        }
+        
+        .payment-status {
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid var(--primary-light);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1.2s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-text {
+            font-size: 1.1rem;
+            color: var(--text-medium);
+            margin-bottom: 1.5rem;
+        }
+        
+        .error {
+            color: var(--error);
+            font-weight: 500;
+        }
+        
+        .whatsapp-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #25D366;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .whatsapp-btn:hover {
+            background-color: #128C7E;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>ApnaScheme Eligibility Plan</h2>
+        <div class="price">One-time payment of ₹49</div>
+        
+        <div id="payment-status" class="payment-status">
+            <div class="loader"></div>
+            <p class="status-text pulse">Preparing payment gateway...</p>
+        </div>
+    </div>
 
-      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-      <script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
         const phone = '${phone}';
         const paymentStatus = document.getElementById('payment-status');
+        
+        function updateStatus(text, isError = false) {
+            paymentStatus.innerHTML = `
+                <p class="status-text ${isError ? 'error' : ''}">${text}</p>
+                ${isError ? '<a href="https://wa.me/917977594397' + phone + '" class="whatsapp-btn">Return to WhatsApp</a>' : ''}
+            `;
+        }
+        
+        // Animate status text while loading
+        const statusText = paymentStatus.querySelector('.status-text');
+        const statusMessages = [
+            "Preparing payment gateway...",
+            "Almost ready...",
+            "Setting up your plan..."
+        ];
+        let counter = 0;
+        
+        const textInterval = setInterval(() => {
+            counter = (counter + 1) % statusMessages.length;
+            statusText.textContent = statusMessages[counter];
+        }, 2000);
         
         fetch('/order?phone=' + phone)
           .then(res => res.json())
           .then(data => {
+            clearInterval(textInterval);
+            
             if (data.error) {
-              paymentStatus.innerHTML = '<p class="error">Payment setup failed. Please try again.</p>';
+              updateStatus("Payment setup failed. Please try again.", true);
               return;
             }
 
@@ -367,7 +527,7 @@ app.get('/pay', async (req, res) => {
                 contact: phone
               },
               theme: {
-                color: '#3399cc'
+                color: '#2563EB'
               },
               modal: {
                 ondismiss: function() {
@@ -376,22 +536,22 @@ app.get('/pay', async (req, res) => {
               }
             };
 
+            updateStatus("Opening payment gateway...");
             const rzp = new Razorpay(options);
             rzp.open();
             
             rzp.on('payment.failed', function(response) {
-              paymentStatus.innerHTML = '<p class="error">Payment failed. Please try again.</p>' +
-                '<a href="https://wa.me/917977594397' + phone + '">Return to WhatsApp</a>';
+              updateStatus("Payment failed. Please try again.", true);
             });
           })
           .catch(err => {
+            clearInterval(textInterval);
             console.error('Payment error:', err);
-            paymentStatus.innerHTML = '<p class="error">Payment setup failed. Please try again later.</p>' +
-              '<a href="https://wa.me/917977594397' + phone + '">Return to WhatsApp</a>';
+            updateStatus("Payment setup failed. Please try again later.", true);
           });
-      </script>
-    </body>
-    </html>
+    </script>
+</body>
+</html>
   `;
   res.send(html);
 });
@@ -402,30 +562,245 @@ app.get('/success', (req, res) => {
 
   res.send(`
     <html>
-    <head>
-      <title>Payment Successful - ApnaScheme</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        .success { color: green; font-size: 24px; }
-        .whatsapp-btn { 
-          display: inline-block; 
-          background-color: #25D366; 
-          color: white; 
-          padding: 10px 20px; 
-          text-decoration: none; 
-          border-radius: 5px; 
-          margin-top: 20px;
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - ApnaScheme</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-light: #D1FAE5;
+            --whatsapp: #25D366;
+            --text-dark: #1F2937;
+            --text-medium: #4B5563;
+            --text-light: #6B7280;
         }
-      </style>
-    </head>
-    <body>
-      <div class="success">✅ Payment Successful!</div>
-      <p>Thank you for your payment of ₹49.</p>
-      <p>Your scheme details will be sent to you shortly on WhatsApp.</p>
-      <a href="https://wa.me/{phone}" class="whatsapp-btn">Open WhatsApp</a>
-    </body>
-    </html>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+            color: var(--text-medium);
+            line-height: 1.5;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 3rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transform: translateY(0);
+            animation: floatUp 0.6s ease-out forwards;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary) 0%, #3B82F6 100%);
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background-color: var(--primary-light);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.75rem;
+            animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+        
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            fill: var(--primary);
+        }
+        
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 0 1rem;
+            color: var(--text-dark);
+        }
+        
+        p {
+            margin: 0.75rem 0;
+            color: var(--text-medium);
+            font-size: 1.05rem;
+        }
+        
+        .amount {
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 1.2rem;
+        }
+        
+        .whatsapp-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--whatsapp);
+            color: white;
+            padding: 0.9rem 2rem;
+            text-decoration: none;
+            border-radius: 12px;
+            margin-top: 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(37, 211, 102, 0.2);
+            width: 100%;
+            max-width: 240px;
+        }
+        
+        .whatsapp-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(37, 211, 102, 0.3);
+            background-color: #128C7E;
+        }
+        
+        .whatsapp-icon {
+            margin-right: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes confettiFall {
+            0% { 
+                opacity: 1;
+                transform: translateY(0) rotate(0deg); 
+            }
+            100% { 
+                opacity: 0;
+                transform: translateY(400px) rotate(360deg);
+            }
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #E5E7EB;
+            margin: 1.5rem 0;
+        }
+        
+        .contact {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="successCard">
+        <div class="success-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+            </svg>
+        </div>
+        <h1>Payment Successful!</h1>
+        <p>Thank you for your payment of <span class="amount">₹49</span></p>
+        <p>Check your WhatsApp for the scheme details.</p>
+        
+        <div class="divider"></div>
+        
+        <a href="https://wa.me/{phone}" class="whatsapp-btn">
+            <span class="whatsapp-icon"></span>
+            Check on WhatsApp
+        </a>
+        
+            </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
+            const card = document.getElementById('successCard');
+            const confettiContainer = document.createElement('div');
+            confettiContainer.style.position = 'absolute';
+            confettiContainer.style.top = '0';
+            confettiContainer.style.left = '0';
+            confettiContainer.style.width = '100%';
+            confettiContainer.style.height = '100%';
+            confettiContainer.style.overflow = 'hidden';
+            confettiContainer.style.pointerEvents = 'none';
+            card.appendChild(confettiContainer);
+            
+            // Create confetti elements
+            for (let i = 0; i < 40; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-10px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = Math.random() * 8 + 4 + 'px';
+                confetti.style.height = confetti.style.width;
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                confetti.style.opacity = '1';
+                
+                // Random rotation and animation duration
+                const rotation = Math.random() * 360;
+                const duration = Math.random() * 1 + 1;
+                const delay = Math.random() * 0.5;
+                
+                confetti.style.transform = `rotate(${rotation}deg)`;
+                confetti.style.animation = `confettiFall ${duration}s ease-out ${delay}s forwards`;
+                
+                confettiContainer.appendChild(confetti);
+                
+                // Remove confetti element after animation completes
+                setTimeout(() => {
+                    confetti.remove();
+                }, (duration + delay) * 1000);
+            }
+            
+            // Remove the container after all confetti is gone
+            setTimeout(() => {
+                confettiContainer.remove();
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
   `);
 });
 
