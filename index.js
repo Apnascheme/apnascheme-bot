@@ -12,14 +12,23 @@ dotenv.config();
 const app = express();
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://aryanmange05:j0xvOfEVKvK8Vzev@cluster0.jclon4a.mongodb.net/apnaschemeDB')
-  .then(() => {
+// Updated MongoDB connection with better error handling
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      retryWrites: true,
+      w: 'majority'
+    });
     console.log("✅ Connected to MongoDB");
-  })
-  .catch(err => {
+  } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-  });
+    process.exit(1); // Exit process with failure
+  }
+};
 
+// Call this when starting your app
+connectDB();
 // MongoDB User Schema
 const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
