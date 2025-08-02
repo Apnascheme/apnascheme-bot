@@ -80,7 +80,7 @@ app.get('/success', async (req, res) => {
     channel: "whatsapp",
     source: GUPSHUP_BOTNAME,
     destination: phone,
-    src.name: GUPSHUP_BOTNAME,
+    'src.name': GUPSHUP_BOTNAME,
     message: {
       type: "text",
       text: `✅ Payment received! Aapke liye jo full Yojana list hai, wo ab bheji ja rahi hai.`
