@@ -13,6 +13,88 @@ app.use('/razorpay-webhook', bodyParser.json({
     req.rawBody = buf;
   }
 }));
+app.post('/create-order', async (req, res) => {
+  try {
+    const { name, email, phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    const order = await razorpay.orders.create({
+      amount: 4900, // ₹49 in paise
+      currency: 'INR',
+      receipt: `order_rcptid_${Date.now()}`,
+      notes: {
+        name,
+        email,
+        phone
+      }
+    });
+
+    res.json({ order });
+  } catch (err) {
+    console.error("Order creation failed", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+app.get('/pay', (req, res) => {
+  const { phone } = req.query;
+  const html = `
+    <html>
+    <head><title>Pay ₹49 - ApnaScheme</title></head>
+    <body>
+      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+      <script>
+        var options = {
+          "key": "${process.env.RAZORPAY_KEY_ID}",
+          "amount": "4900",
+          "currency": "INR",
+          "name": "ApnaScheme",
+          "description": "₹49 Eligibility Plan",
+          "order_id": "${currentOrderId}", // inject order_id dynamically
+          "handler": function (response){
+              window.location.href = "/success?phone=${phone}";
+          },
+          "prefill": {
+              "contact": "${phone}"
+          },
+          "theme": {
+              "color": "#3399cc"
+          }
+        };
+        var rzp = new Razorpay(options);
+        rzp.open();
+      </script>
+    </body>
+    </html>
+  `;
+  res.send(html);
+});
+app.get('/success', async (req, res) => {
+  const phone = req.query.phone;
+  if (!phone) return res.send('Missing phone');
+
+  // Optional: trigger bot follow-up using Gupshup API
+  await axios.post(BASE_URL, {
+    channel: "whatsapp",
+    source: GUPSHUP_BOTNAME,
+    destination: phone,
+    src.name: GUPSHUP_BOTNAME,
+    message: {
+      type: "text",
+      text: `✅ Payment received! Aapke liye jo full Yojana list hai, wo ab bheji ja rahi hai.`
+    }
+  }, {
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": GUPSHUP_APP_TOKEN
+    }
+  });
+
+  res.send("✅ Payment Success! Please check WhatsApp for your Yojana list.");
+});
+
 
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
@@ -339,6 +421,8 @@ app.post('/gupshup', express.json(), async (req, res) => {
     if (next) {
       await sendMessage(phone, next);
     } else {
+      const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}`;
+
       // User has answered all questions - show eligible schemes
       const eligibleSchemes = getEligibleSchemes(user.responses);
       
@@ -348,21 +432,21 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `सिर्फ ₹49 में पाएं:\n` +
                       `आपके लिए सभी योजनाओं की पूरी लिस्ट\n` +
                       `सीधे आवेदन करने के लिंक\n\n` +
-                      `अभी पेमेंट करें: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `अभी पेमेंट करें: \n${paymentUrl}\n\n` +
                       `ऑफर सीमित समय के लिए!`;
       } else if (user.language === '2') { // English
         closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n` +
                       `For just ₹49 get:\n` +
                       `Complete list of all schemes\n` +
                       `Direct application links\n\n` +
-                      `Make payment now: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `Make payment now: \n${paymentUrl}\n\n` +
                       `Limited time offer!`;
       } else { // Marathi (default to 3)
         closingMessage = `तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n` +
                       `फक्त ₹49 मध्ये मिळवा:\n` +
                       `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n` +
                       `थेट अर्ज करण्याचे लिंक\n\n` +
-                      `आत्ताच पेमेंट करा: \nhttps://rzp.io/rzp/apnascheme\n\n` +
+                      `आत्ताच पेमेंट करा: \n${paymentUrl}\n\n` +
                       `मर्यादित वेळ ऑफर!`;
       }
 
@@ -458,7 +542,7 @@ app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res
       console.log(`📩 Sent schemes to ${phone}`);
 
       // Cleanup
-      delete userContext[userPhone];
+      delete userContext[phone];
       res.status(200).send('Success');
     } catch (error) {
       console.error('Webhook error:', error);
