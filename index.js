@@ -12,14 +12,13 @@ dotenv.config();
 const app = express();
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://aryanmange05:j0xvOfEVKvK8Vzev@cluster0.jclon4a.mongodb.net/apnaschemeDB', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log("✅ Connected to MongoDB");
-}).catch(err => {
-  console.error("❌ MongoDB connection error:", err);
-});
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://aryanmange05:j0xvOfEVKvK8Vzev@cluster0.jclon4a.mongodb.net/apnaschemeDB')
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+  })
+  .catch(err => {
+    console.error("❌ MongoDB connection error:", err);
+  });
 
 // MongoDB User Schema
 const userSchema = new mongoose.Schema({
