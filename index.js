@@ -71,7 +71,7 @@ app.get('/success', async (req, res) => {
   // Optional: trigger bot follow-up using Gupshup API
   await axios.post(BASE_URL, {
     channel: "whatsapp",
-    source: GUPSHUP_BOTNAME,
+    source: GUPSHUP_PHONE_NUMBER,
     destination: phone,
     'src.name': GUPSHUP_BOTNAME,
     message: {
