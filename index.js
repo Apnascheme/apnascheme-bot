@@ -11,6 +11,44 @@ dotenv.config();
 
 const app = express();
 
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://aryanmange05:j0xvOfEVKvK8Vzev@cluster0.jclon4a.mongodb.net/apnaschemeDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log("✅ Connected to MongoDB");
+}).catch(err => {
+  console.error("❌ MongoDB connection error:", err);
+});
+
+// MongoDB User Schema
+const userSchema = new mongoose.Schema({
+  phone: { type: String, required: true, unique: true },
+  language: String,
+  age: String,
+  gender: String,
+  occupation: String,
+  income: String,
+  bankAccount: String,
+  state: String,
+  eligibilityCount: Number,
+  referralCode: String,
+  referredBy: String,
+  paymentStatus: { type: String, default: 'pending' },
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  responses: [String],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
+
+// Helper function to generate referral code
+function generateReferralCode(phone) {
+  return 'REF' + phone.slice(-4) + Math.floor(1000 + Math.random() * 9000).toString().slice(0, 2);
+}
+
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use('/razorpay-webhook', bodyParser.json({
@@ -270,21 +308,33 @@ const getNextQuestion = (user) => {
 
 // Routes
 app.get('/', (req, res) => {
-  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
+  res.send('✅ ApnaScheme Bot is running with MongoDB integration');
 });
 
 // Razorpay Payment Flow
 app.get('/order', async (req, res) => {
   const { phone } = req.query;
-  const options = {
-    amount: 100,
-    currency: 'INR',
-    receipt: `rcpt_${phone}_${Date.now()}`,
-    notes: { phone }
-  };
-
+  
   try {
+    // Find user in MongoDB
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const options = {
+      amount: 4900, // ₹49 in paise
+      currency: 'INR',
+      receipt: `rcpt_${phone}_${Date.now()}`,
+      notes: { phone }
+    };
+
     const order = await razorpay.orders.create(options);
+    
+    // Update user with order ID
+    user.razorpayOrderId = order.id;
+    await user.save();
+
     res.json({ 
       orderId: order.id,
       amount: order.amount,
@@ -305,7 +355,7 @@ app.get('/pay', async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>₹1 Eligibility Plan - ApnaScheme</title>
+    <title>₹49 Eligibility Plan - ApnaScheme</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -497,7 +547,7 @@ app.get('/pay', async (req, res) => {
               amount: data.amount,
               currency: data.currency,
               name: 'ApnaScheme',
-              description: '₹1 Eligibility Plan',
+              description: '₹49 Eligibility Plan',
               order_id: data.orderId,
               handler: function(response) {
                 window.location.href = '/success?phone=' + phone;
@@ -534,6 +584,7 @@ app.get('/pay', async (req, res) => {
 
   res.send(html);
 });
+
 app.get('/success', (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.status(400).send('Phone number required');
@@ -811,14 +862,30 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     }
 
     const phone = payment.notes?.phone;
-    if (!phone || !userContext[phone]) {
-      console.warn('❌ Phone number missing or user not found');
+    if (!phone) {
+      console.warn('❌ Phone number missing');
       return res.status(400).send('Phone number required');
     }
 
-    console.log('✅ Payment verified for phone:', phone);
+    // Update user in MongoDB
+    const user = await User.findOneAndUpdate(
+      { phone },
+      {
+        paymentStatus: 'paid',
+        razorpayPaymentId: payment.id,
+        razorpayOrderId: payment.order_id,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
 
-    const user = userContext[phone];
+    if (!user) {
+      console.warn('❌ User not found in database');
+      return res.status(404).send('User not found');
+    }
+
+    console.log('✅ Payment verified and user updated for phone:', phone);
+
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2';
 
@@ -872,6 +939,7 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     res.status(500).send('Server error');
   }
 });
+
 // Gupshup WhatsApp Integration
 app.post('/gupshup', express.json(), async (req, res) => {
   try {
@@ -889,13 +957,16 @@ app.post('/gupshup', express.json(), async (req, res) => {
       return res.status(400).send('Missing phone number');
     }
 
-    if (!userContext[phone]) {
+    // Check if user exists in MongoDB
+    let user = await User.findOne({ phone });
+
+    if (!user) {
       if (msg.includes('1')) {
-        userContext[phone] = { language: '1', responses: [] };
+        user = new User({ phone, language: '1', responses: [] });
       } else if (msg.includes('2')) {
-        userContext[phone] = { language: '2', responses: [] };
+        user = new User({ phone, language: '2', responses: [] });
       } else if (msg.includes('3')) {
-        userContext[phone] = { language: '3', responses: [] };
+        user = new User({ phone, language: '3', responses: [] });
       } else {
         await sendMessage(phone, 
           "Namaste!\nMain hoon ApnaScheme - aapka Sarkari Saathi! 🇮🇳\n" +
@@ -907,15 +978,33 @@ app.post('/gupshup', express.json(), async (req, res) => {
         return res.sendStatus(200);
       }
 
+      await user.save();
+      userContext[phone] = user.toObject(); // Add to in-memory context
       const firstQuestion = getNextQuestion(userContext[phone]);
       await sendMessage(phone, firstQuestion);
       return res.sendStatus(200);
     }
 
-    const user = userContext[phone];
+    // Update user responses
     const qIndex = user.responses.length;
     const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
     user.responses.push(mapped);
+    user.updatedAt = new Date();
+
+    // Save specific fields based on question index
+    switch(qIndex) {
+      case 0: user.gender = mapped; break;
+      case 1: user.age = mapped; break;
+      case 2: user.occupation = mapped; break;
+      case 3: user.income = mapped; break;
+      case 4: user.bankAccount = mapped; break;
+      case 5: user.hasRation = mapped; break;
+      case 6: user.state = mapped; break;
+      case 7: user.caste = mapped; break;
+    }
+
+    await user.save();
+    userContext[phone] = user.toObject(); // Update in-memory context
 
     const next = getNextQuestion(user);
     if (next) {
@@ -924,6 +1013,12 @@ app.post('/gupshup', express.json(), async (req, res) => {
       const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}`;
       const eligibleSchemes = getEligibleSchemes(user.responses);
       
+      // Generate referral code if not exists
+      if (!user.referralCode) {
+        user.referralCode = generateReferralCode(phone);
+        await user.save();
+      }
+
       let closingMessage = "";
       if (user.language === '1') {
         closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
@@ -938,7 +1033,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `List of all eligible schemes\n` +
                       `Direct application links\n\n` +
                       `Act Now!\nLimited-time offer: \n${paymentUrl}\n\n` +
-                      `Don’t miss out on these benefits.`;
+                      `Don't miss out on these benefits.`;
       } else {
         closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
                       `फक्त ₹49 मध्ये,\nताबडतोब मिळवा:\n` +
