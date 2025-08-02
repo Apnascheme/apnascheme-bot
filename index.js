@@ -17,7 +17,7 @@ app.get('/pay', async (req, res) => {
   const { phone } = req.query;
 
   const options = {
-    amount: 4900,
+    amount: 100,
     currency: "INR",
     receipt: `receipt_${Date.now()}`,
     payment_capture: 1,
@@ -28,13 +28,13 @@ app.get('/pay', async (req, res) => {
 
     const html = `
       <html>
-      <head><title>Pay ₹49 - ApnaScheme</title></head>
+      <head><title>Pay ₹1 - ApnaScheme</title></head>
       <body>
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         <script>
           var options = {
             "key": "${process.env.RAZORPAY_KEY_ID}",
-            "amount": "4900",
+            "amount": "100",
             "currency": "INR",
             "name": "ApnaScheme",
             "description": "₹49 Eligibility Plan",
