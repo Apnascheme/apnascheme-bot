@@ -114,7 +114,7 @@ async function loadSchemes() {
       BankAccountRequired: row.getCell(9).value === 'Yes',
       AadhaarRequired: row.getCell(10).value === 'Yes',
       ApplicationMode: row.getCell(11).value,
-      OfficialLink: row.getCell(12).value,
+      OfficialLink: String(row.getCell(12).value || ''),
       ActiveStatus: row.getCell(13).value
     });
   });
@@ -447,23 +447,28 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     if (lang === '1') {
       message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
+        // Ensure OfficialLink is a string
+        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
+        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${link || 'Link not available'}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 रसीद ID: ${payment.id}`;
     } else if (lang === '3') {
       message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
+        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
+        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${link || 'Link not available'}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 पावती ID: ${payment.id}`;
     } else {
       message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
       eligibleSchemes.forEach(scheme => {
-        message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
+        const link = typeof scheme.OfficialLink === 'string' ? scheme.OfficialLink : '';
+        message += `• ${scheme.SchemeName}\n🔗 Apply: ${link || 'Link not available'}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
       });
       message += `📄 Receipt ID: ${payment.id}`;
     }
 
+    // Send the message
     await sendMessage(phone, message);
     console.log(`📩 Sent schemes to ${phone}`);
 
@@ -474,7 +479,6 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     res.status(500).send('Server error');
   }
 });
-
 // Gupshup WhatsApp Integration
 app.post('/gupshup', express.json(), async (req, res) => {
   try {
