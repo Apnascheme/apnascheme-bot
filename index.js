@@ -5,104 +5,36 @@ import ExcelJS from 'exceljs';
 import crypto from 'crypto'; 
 import Razorpay from 'razorpay';
 import bodyParser from 'body-parser';
+
 dotenv.config();
 
 const app = express();
+
+// Middleware
+app.use(express.urlencoded({ extended: true }));
 app.use('/razorpay-webhook', bodyParser.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.get('/pay', async (req, res) => {
-  const { phone } = req.query;
 
-  const options = {
-    amount: 100,
-    currency: "INR",
-    receipt: `receipt_${Date.now()}`,
-    payment_capture: 1,
-  };
-
-  try {
-    const order = await razorpay.orders.create(options);
-
-    const html = `
-      <html>
-      <head><title>Pay ₹1 - ApnaScheme</title></head>
-      <body>
-        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-        <script>
-          var options = {
-            "key": "${process.env.RAZORPAY_KEY_ID}",
-            "amount": "100",
-            "currency": "INR",
-            "name": "ApnaScheme",
-            "description": "₹49 Eligibility Plan",
-            "order_id": "${order.id}", // use dynamic order_id here
-            "handler": function (response){
-                window.location.href = "/success?phone=${phone}";
-            },
-            "prefill": {
-                "contact": "${phone}"
-            },
-            "theme": {
-                "color": "#3399cc"
-            }
-          };
-          var rzp = new Razorpay(options);
-          rzp.open();
-        </script>
-      </body>
-      </html>
-    `;
-
-    res.send(html);
-  } catch (err) {
-    console.error("Error creating Razorpay order:", err);
-    res.status(500).send("Payment setup failed.");
-  }
-});
-
-
-app.get('/success', async (req, res) => {
-  const phone = req.query.phone;
-  if (!phone) return res.send('Missing phone');
-
-  // Optional: trigger bot follow-up using Gupshup API
-  await axios.post(BASE_URL, {
-    channel: "whatsapp",
-    source: GUPSHUP_PHONE_NUMBER,
-    destination: phone,
-    'src.name': 'ApnaSchemeTechnologies',
-    message: {
-      type: "text",
-      text: `✅ Payment received! Aapke liye jo full Yojana list hai, wo ab bheji ja rahi hai.`
-    }
-  }, {
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": GUPSHUP_APP_TOKEN
-    }
-  });
-
-  res.send("✅ Payment Success! Please check WhatsApp for your Yojana list.");
-});
-
-
-const PORT = process.env.PORT || 3000;
-const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
-const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
-const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
-
+// Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-const userContext = {}; // Temporary in-memory store
-let schemes = []; // Store loaded schemes
-let rawBodyStore = {}; 
+// Constants
+const PORT = process.env.PORT || 3000;
+const BASE_URL = 'https://api.gupshup.io/sm/api/v1/msg';
+const GUPSHUP_APP_TOKEN = process.env.GUPSHUP_APP_TOKEN;
+const GUPSHUP_PHONE_NUMBER = process.env.GUPSHUP_PHONE_NUMBER;
 
+// Data Stores
+const userContext = {};
+let schemes = [];
+
+// Questions and Mappings
 const QUESTIONS = {
   1: [
     "आपका लिंग क्या है?\n1. पुरुष\n2. महिला\n3. अन्य",
@@ -160,7 +92,7 @@ const OPTION_MAPPINGS = {
   }
 };
 
-// Load schemes from Excel
+// Helper Functions
 async function loadSchemes() {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile('ApnaScheme_Phase1_50_Scheme_Template.xlsx');
@@ -168,7 +100,7 @@ async function loadSchemes() {
   
   schemes = [];
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // Skip header
+    if (rowNumber === 1) return;
     
     schemes.push({
       SchemeName: row.getCell(1).value,
@@ -188,8 +120,6 @@ async function loadSchemes() {
   });
 }
 
-// Filter eligible schemes (updated version)
-// Filter eligible schemes (updated version)
 function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
@@ -202,45 +132,33 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     const userState = state?.toLowerCase()?.trim() || '';
     const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
 
-    // 🚫 1. Gender-specific schemes
+    // Gender-specific schemes
     const womenSchemes = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
-    if (
-      womenSchemes.some(word => schemeNameLower.includes(word)) &&
-      !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)
-    ) {
+    if (womenSchemes.some(word => schemeNameLower.includes(word)) &&
+        !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)) {
       return false;
     }
 
-    // 🚫 2. Disability-specific schemes
+    // Disability-specific schemes
     const disabilitySchemes = ['disability', 'divyang', 'viklang', 'udid', 'adip'];
-    if (
-      disabilitySchemes.some(word => schemeNameLower.includes(word)) &&
-      !occupationLower.includes('disabled')
-    ) {
+    if (disabilitySchemes.some(word => schemeNameLower.includes(word)) &&
+        !occupationLower.includes('disabled')) {
       return false;
     }
 
-    // 🚫 3. Maternity / health schemes filtering
+    // Maternity/health schemes
     const maternitySchemes = ['janani', 'matru', 'maternity'];
-    if (
-      maternitySchemes.some(word => schemeNameLower.includes(word)) &&
-      (
-        genderLower !== 'female' ||
-        age < 13 || age > 50
-      )
-    ) {
+    if (maternitySchemes.some(word => schemeNameLower.includes(word)) &&
+        (genderLower !== 'female' || age < 13 || age > 50)) {
       return false;
     }
 
-    // 🚫 4. Rashtriya Arogya Nidhi check (only if critical illness)
-    if (
-      schemeNameLower.includes('rashtriya arogya nidhi') &&
-      !hasCriticalIllness
-    ) {
+    // Rashtriya Arogya Nidhi check
+    if (schemeNameLower.includes('rashtriya arogya nidhi') && !hasCriticalIllness) {
       return false;
     }
 
-    // 🚫 5. Occupation-specific filtering
+    // Occupation filtering
     if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
       if (!occupationLower.includes(schemeOccupation)) {
@@ -248,18 +166,18 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
       }
     }
 
-    // ✅ 6. State filtering
+    // State filtering
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // ✅ 7. Age range filtering
+    // Age range
     const minAge = scheme.MinAge || 0;
     const maxAge = scheme.MaxAge || 100;
     if (age < minAge || age > maxAge) return false;
 
-    // ✅ 8. Income check
+    // Income check
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // ✅ 9. Caste filtering
+    // Caste filtering
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       const userCaste = caste?.toLowerCase()?.trim() || '';
@@ -269,13 +187,13 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
       }
     }
 
-    // ✅ 10. Bank account required
+    // Bank account required
     if (scheme.BankAccountRequired) {
       const hasBankLower = hasBank?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
     }
 
-    // ✅ 11. Aadhaar / Ration required
+    // Aadhaar/Ration required
     if (scheme.AadhaarRequired) {
       const hasRationLower = hasRation?.toLowerCase();
       if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
@@ -284,7 +202,6 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     return true;
   });
 }
-
 
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
@@ -312,55 +229,259 @@ const getNextQuestion = (user) => {
   const q = QUESTIONS[lang];
   const res = user.responses;
 
-  if (res.length === 0) return q[0]; // Gender
-  if (res.length === 1) return q[1]; // Age
-  if (res.length === 2) return q[2]; // Occupation
+  if (res.length === 0) return q[0];
+  if (res.length === 1) return q[1];
+  if (res.length === 2) return q[2];
 
   let occupation = res[2]?.toLowerCase();
 
-  // Convert option numbers to labels first
-  if (lang === '1') { // Hindi
+  if (lang === '1') {
     if (occupation === '1') occupation = 'छात्र';
     else if (occupation === '2') occupation = 'बेरोज़गार';
     else if (occupation === '3') occupation = 'नौकरीपेशा';
     else if (occupation === '4') occupation = 'अन्य';
-  } else if (lang === '2') { // English
+  } else if (lang === '2') {
     if (occupation === '1') occupation = 'student';
     else if (occupation === '2') occupation = 'unemployed';
     else if (occupation === '3') occupation = 'employed';
     else if (occupation === '4') occupation = 'other';
-  } else if (lang === '3') { // Marathi
+  } else if (lang === '3') {
     if (occupation === '1') occupation = 'विद्यार्थी';
     else if (occupation === '2') occupation = 'बेरोजगार';
     else if (occupation === '3') occupation = 'नोकरी करता';
     else if (occupation === '4') occupation = 'इतर';
   }
 
-  const isStudent = ['student', 'छात्र', 'विद्यार्थी'].includes(occupation);
-  const isUnemployed = ['unemployed', 'बेरोज़गार', 'बेरोजगार'].includes(occupation);
-  const isEmployed = ['employed', 'नौकरीपेशा', 'नोकरी करता'].includes(occupation);
-
-  // Always ask income question (q[3]) regardless of occupation
-  if (res.length === 3) return q[3]; // Income
+  if (res.length === 3) return q[3];
+  if (res.length === 4) return q[4];
+  if (res.length === 5) return q[5];
+  if (res.length === 6) return q[6];
+  if (res.length === 7) return q[7];
   
-  // Then proceed with bank account question
-  if (res.length === 4) return q[4]; // Bank account
-  
-  // Then ration card
-  if (res.length === 5) return q[5]; // Ration card
-  
-  // Then state
-  if (res.length === 6) return q[6]; // State
-  
-  // Finally caste
-  if (res.length === 7) return q[7]; // Caste
-  
-  return null; // Done
+  return null;
 };
 
+// Routes
+app.get('/', (req, res) => {
+  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
+});
+
+// Razorpay Payment Flow
+app.get('/order', async (req, res) => {
+  const { phone } = req.query;
+  const options = {
+    amount: 100,
+    currency: 'INR',
+    receipt: `rcpt_${phone}_${Date.now()}`,
+    notes: { phone }
+  };
+
+  try {
+    const order = await razorpay.orders.create(options);
+    res.json({ 
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency
+    });
+  } catch (err) {
+    console.error("Razorpay order error:", err);
+    res.status(500).json({ error: 'Order creation failed' });
+  }
+});
+
+app.get('/pay', async (req, res) => {
+  const { phone } = req.query;
+  if (!phone) return res.status(400).send('Phone number required');
+
+  const html = `
+    <html>
+    <head>
+      <title>Pay ₹1 - ApnaScheme</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        .loader { margin: 50px auto; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error { color: red; }
+      </style>
+    </head>
+    <body>
+      <h2>ApnaScheme Eligibility Plan</h2>
+      <p>One-time payment of ₹1</p>
+      <div id="payment-status">
+        <div class="loader"></div>
+        <p>Loading payment...</p>
+      </div>
+
+      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+      <script>
+        const phone = '${phone}';
+        const paymentStatus = document.getElementById('payment-status');
+        
+        fetch('/order?phone=' + phone)
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) {
+              paymentStatus.innerHTML = '<p class="error">Payment setup failed. Please try again.</p>';
+              return;
+            }
+
+            const options = {
+              key: '${process.env.RAZORPAY_KEY_ID}',
+              amount: data.amount,
+              currency: data.currency,
+              name: 'ApnaScheme',
+              description: '₹1 Eligibility Plan',
+              order_id: data.orderId,
+              handler: function(response) {
+                window.location.href = '/success?phone=' + phone;
+              },
+              prefill: {
+                contact: phone
+              },
+              theme: {
+                color: '#3399cc'
+              },
+              modal: {
+                ondismiss: function() {
+                  window.location.href = 'https://wa.me/917977594397' + phone;
+                }
+              }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+            
+            rzp.on('payment.failed', function(response) {
+              paymentStatus.innerHTML = `
+                <p class="error">Payment failed. Please try again.</p>
+                <a href="https://wa.me/91${phone}">Return to WhatsApp</a>
+              `;
+            });
+          })
+          .catch(err => {
+            console.error('Payment error:', err);
+            paymentStatus.innerHTML = `
+              <p class="error">Payment setup failed. Please try again later.</p>
+              <a href="https://wa.me/91${phone}">Return to WhatsApp</a>
+            `;
+          });
+      </script>
+    </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.get('/success', (req, res) => {
+  const { phone } = req.query;
+  if (!phone) return res.status(400).send('Phone number required');
+
+  res.send(`
+    <html>
+    <head>
+      <title>Payment Successful - ApnaScheme</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        .success { color: green; font-size: 24px; }
+        .whatsapp-btn { 
+          display: inline-block; 
+          background-color: #25D366; 
+          color: white; 
+          padding: 10px 20px; 
+          text-decoration: none; 
+          border-radius: 5px; 
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="success">✅ Payment Successful!</div>
+      <p>Thank you for your payment of ₹49.</p>
+      <p>Your scheme details will be sent to you shortly on WhatsApp.</p>
+      <a href="https://wa.me/91${phone}" class="whatsapp-btn">Open WhatsApp</a>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    
+    if (!req.rawBody) {
+      console.log('⚠️ Raw body missing');
+      return res.status(400).send('Missing raw body');
+    }
+
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(req.rawBody);
+    const generatedSignature = hmac.digest('hex');
+
+    if (generatedSignature !== razorpaySignature) {
+      console.warn('⚠️ Invalid Razorpay signature');
+      return res.status(401).send('Unauthorized');
+    }
+
+    console.log('✅ Webhook signature verified');
+    
+    const webhookBody = JSON.parse(req.rawBody.toString());
+    const payment = webhookBody?.payload?.payment?.entity;
+
+    if (!payment || payment.status !== 'captured') {
+      console.warn('❌ Not a captured payment');
+      return res.status(400).send('Invalid payment');
+    }
+
+    const phone = payment.notes?.phone;
+    if (!phone || !userContext[phone]) {
+      console.warn('❌ Phone number missing or user not found');
+      return res.status(400).send('Phone number required');
+    }
+
+    console.log('✅ Payment verified for phone:', phone);
+
+    const user = userContext[phone];
+    const eligibleSchemes = getEligibleSchemes(user.responses);
+    const lang = user.language || '2';
+
+    let message;
+    if (lang === '1') {
+      message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 रसीद ID: ${payment.id}`;
+    } else if (lang === '3') {
+      message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 पावती ID: ${payment.id}`;
+    } else {
+      message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
+      eligibleSchemes.forEach(scheme => {
+        message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
+      });
+      message += `📄 Receipt ID: ${payment.id}`;
+    }
+
+    await sendMessage(phone, message);
+    console.log(`📩 Sent schemes to ${phone}`);
+
+    delete userContext[phone];
+    res.status(200).send('Success');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Server error');
+  }
+});
+
+// Gupshup WhatsApp Integration
 app.post('/gupshup', express.json(), async (req, res) => {
   try {
-    // Validate request body structure
     if (!req.body || !req.body.payload) {
       console.warn('Invalid request structure', req.body);
       return res.status(400).send('Invalid request structure');
@@ -370,15 +491,12 @@ app.post('/gupshup', express.json(), async (req, res) => {
     const phone = data?.sender?.phone;
     const msg = data?.payload?.text?.toLowerCase()?.trim() || '';
 
-    // Validate required fields
     if (!phone) {
       console.warn('Missing phone number in request');
       return res.status(400).send('Missing phone number');
     }
 
-    // Initialize user context if it doesn't exist
     if (!userContext[phone]) {
-      // Default to Hindi if no valid language selection
       if (msg.includes('1')) {
         userContext[phone] = { language: '1', responses: [] };
       } else if (msg.includes('2')) {
@@ -386,7 +504,6 @@ app.post('/gupshup', express.json(), async (req, res) => {
       } else if (msg.includes('3')) {
         userContext[phone] = { language: '3', responses: [] };
       } else {
-        // Send language selection prompt
         await sendMessage(phone, 
           "Namaste! Main hoon ApnaScheme – aapka digital dost 🇮🇳\n" +
           "Main aapko batata hoon kaunsi Sarkari Yojana aapke liye hai – bina agent, bina form, bina confusion.\n\n" +
@@ -401,40 +518,34 @@ app.post('/gupshup', express.json(), async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // Process existing user response
     const user = userContext[phone];
     const qIndex = user.responses.length;
-    
-    // Map the answer based on language and question index
     const mapped = mapAnswer(parseInt(user.language), qIndex, msg);
     user.responses.push(mapped);
 
-    // Get and send next question or final message
     const next = getNextQuestion(user);
     if (next) {
       await sendMessage(phone, next);
     } else {
       const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}`;
-
-      // User has answered all questions - show eligible schemes
       const eligibleSchemes = getEligibleSchemes(user.responses);
       
       let closingMessage = "";
-      if (user.language === '1') { // Hindi
+      if (user.language === '1') {
         closingMessage = `आप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं!\n\n` +
                       `सिर्फ ₹49 में पाएं:\n` +
                       `आपके लिए सभी योजनाओं की पूरी लिस्ट\n` +
                       `सीधे आवेदन करने के लिंक\n\n` +
                       `अभी पेमेंट करें: \n${paymentUrl}\n\n` +
                       `ऑफर सीमित समय के लिए!`;
-      } else if (user.language === '2') { // English
+      } else if (user.language === '2') {
         closingMessage = `You're eligible for ${eligibleSchemes.length} government schemes!\n\n` +
                       `For just ₹49 get:\n` +
                       `Complete list of all schemes\n` +
                       `Direct application links\n\n` +
                       `Make payment now: \n${paymentUrl}\n\n` +
                       `Limited time offer!`;
-      } else { // Marathi (default to 3)
+      } else {
         closingMessage = `तुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात!\n\n` +
                       `फक्त ₹49 मध्ये मिळवा:\n` +
                       `तुमच्यासाठी सर्व योजनांची संपूर्ण यादी\n` +
@@ -453,98 +564,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('✅ ApnaScheme Bot is running with scheme eligibility filtering');
-});
-
- // Fix for the Razorpay webhook
-app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
-  try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const razorpaySignature = req.headers['x-razorpay-signature'];
-    
-    if (!req.body) {
-      console.log('⚠️ Raw body missing');
-      return res.status(400).send('Missing raw body');
-    }
-
-    // Create HMAC SHA256 hash using the secret
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(req.body); // Convert buffer to string
-    const generatedSignature = hmac.digest('hex');
-
-    if (generatedSignature !== razorpaySignature) {
-      console.warn('⚠️ Invalid Razorpay signature');
-      return res.status(401).send('Unauthorized');
-    }
-
-    console.log('✅ Webhook signature verified');
-    
-    // Parse the JSON body after verification
-    const webhookBody = JSON.parse(req.body.toString());
-    const payment = webhookBody?.payload?.payment?.entity;
-
-    if (!payment || payment.status !== 'captured') {
-      console.warn('❌ Not a captured payment');
-      return res.status(400).send('Invalid payment');
-    }
-
-    const phone = payment.notes?.phone;
-    if (!phone || !userContext[phone]) {
-      console.warn('❓ User context not found for phone:', phone);
-      return res.status(404).send('User not found');
-    }
-
-    const user = userContext[phone];
-    console.log('✅ Payment verified for user:', phone);
-
-    // 1st message: simple confirmation
-    await sendMessage(phone, '✅ Payment received. Your yojana list is ready...');
-
-
-      // Get eligible schemes
-      const eligibleSchemes = getEligibleSchemes(user.responses);
-      const lang = user.language || '2';
-
-      // Format message based on language
-      let message;
-      if (lang === '1') { // Hindi
-        message = `✅ भुगतान सफल!\n\nआपकी योजनाएं (${eligibleSchemes.length}):\n\n`;
-        eligibleSchemes.forEach(scheme => {
-          message += `• ${scheme.SchemeName}\n🔗 आवेदन: ${scheme.OfficialLink}\n📝 तरीका: ${scheme.ApplicationMode}\n\n`;
-        });
-        message += `📄 रसीद ID: ${payment.id}`;
-      } 
-      else if (lang === '3') { // Marathi
-        message = `✅ पेमेंट यशस्वी!\n\nतुमच्या योजना (${eligibleSchemes.length}):\n\n`;
-        eligibleSchemes.forEach(scheme => {
-          message += `• ${scheme.SchemeName}\n🔗 अर्ज: ${scheme.OfficialLink}\n📝 पद्धत: ${scheme.ApplicationMode}\n\n`;
-        });
-        message += `📄 पावती ID: ${payment.id}`;
-      } 
-      else { // English
-        message = `✅ Payment Successful!\n\nYour Schemes (${eligibleSchemes.length}):\n\n`;
-        eligibleSchemes.forEach(scheme => {
-          message += `• ${scheme.SchemeName}\n🔗 Apply: ${scheme.OfficialLink}\n📝 Mode: ${scheme.ApplicationMode}\n\n`;
-        });
-        message += `📄 Receipt ID: ${payment.id}`;
-      }
-
-      // Send detailed message
-      await sendMessage(phone, message);
-      console.log(`📩 Sent schemes to ${phone}`);
-
-      // Cleanup
-      delete userContext[phone];
-      res.status(200).send('Success');
-    } catch (error) {
-      console.error('Webhook error:', error);
-      res.status(500).send('Server error');
-    }
-  }
-);
-
-
+// Start Server
 app.listen(PORT, async () => {
   try {
     await loadSchemes();
