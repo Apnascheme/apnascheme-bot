@@ -44,6 +44,7 @@ const userSchema = new mongoose.Schema({
   occupation: String,
   income: String,
   bankAccount: String,
+  rationcard:String,
   state: String,
   eligibilityCount: Number,
   referralCode: String,
