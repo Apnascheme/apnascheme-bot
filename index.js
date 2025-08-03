@@ -791,7 +791,7 @@ app.get('/success', (req, res) => {
         
         <div class="divider"></div>
         
-        <a href="https://wa.me/${phone}" class="whatsapp-btn">
+        <a href="https://wa.me/7977594397}" class="whatsapp-btn">
             <span class="whatsapp-icon"></span>
             Check on WhatsApp
         </a>
@@ -924,7 +924,7 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
                    ` विधि: ${scheme.ApplicationMode}\n\n`;
       });
       message += `रसीद ID: ${payment.id}\n` +
-                 `धन्यवाद.`;
+                 `अपना स्कीम को चुनने के लिए धन्यवाद. `;
     } 
     else if (lang === '3') { // Marathi
       message = ` योजनांची नावे आणि अर्ज लिंक:\n\n`;
@@ -934,7 +934,7 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
                    ` पद्धत: ${scheme.ApplicationMode}\n\n`;
       });
       message += `पावती ID: ${payment.id}\n` +
-                 `धन्यवाद.`;
+                 `अप्नास्कीम निवडल्याबद्दल धन्यवाद. `;
     } 
     else { // English (default)
       message = ` Scheme names with their application links:\n\n`;
@@ -944,7 +944,7 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
                    ` Mode: ${scheme.ApplicationMode}\n\n`;
       });
       message += `Receipt ID: ${payment.id}\n` +
-                 `Thank you.`;
+                 `Thank you for choosing ApnaScheme.`;
     }
 
     // Ensure message length is within WhatsApp limits
