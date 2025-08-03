@@ -32,9 +32,9 @@ const connectDB = async () => {
   }
 };
 
-
 // Call this when starting your app
 connectDB();
+
 // MongoDB User Schema
 const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema({
   occupation: String,
   income: String,
   bankAccount: String,
-  rationcard:String,
+  rationcard: String,
   state: String,
   eligibilityCount: Number,
   referralCode: String,
@@ -54,7 +54,11 @@ const userSchema = new mongoose.Schema({
   razorpayPaymentId: String,
   responses: [String],
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  hasReceivedSchemes: {
+    type: Boolean,
+    default: false
+  }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -338,7 +342,7 @@ app.get('/order', async (req, res) => {
     }
 
     const options = {
-      amount: 4900, // ₹49 in paise
+      amount: 100, // ₹49 in paise
       currency: 'INR',
       receipt: `rcpt_${phone}_${Date.now()}`,
       notes: { phone }
@@ -370,7 +374,7 @@ app.get('/pay', async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>₹49 Eligibility Plan - ApnaScheme</title>
+    <title>₹1 Eligibility Plan - ApnaScheme</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -882,22 +886,28 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
       return res.status(400).send('Phone number required');
     }
 
-    // Update user in MongoDB
-    const user = await User.findOneAndUpdate(
-      { phone },
-      {
-        paymentStatus: 'paid',
-        razorpayPaymentId: payment.id,
-        razorpayOrderId: payment.order_id,
-        updatedAt: new Date()
-      },
-      { new: true }
-    );
-
+    // Load user from DB
+    const user = await User.findOne({ phone });
     if (!user) {
       console.warn('❌ User not found in database');
       return res.status(404).send('User not found');
     }
+
+    // Check if already processed
+    if (user.hasReceivedSchemes) {
+      console.log("Duplicate webhook. Already delivered.");
+      return res.status(200).send("Already delivered");
+    }
+
+    // Immediately respond to Razorpay to prevent retries
+    res.status(200).send("Webhook received");
+
+    // Update user payment status
+    user.paymentStatus = 'paid';
+    user.razorpayPaymentId = payment.id;
+    user.razorpayOrderId = payment.order_id;
+    user.updatedAt = new Date();
+    await user.save();
 
     console.log('✅ Payment verified and user updated for phone:', phone);
 
@@ -946,12 +956,14 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
     await sendMessage(phone, message);
     console.log(`📩 Sent schemes to ${phone}`);
 
+    // Mark as processed
+    user.hasReceivedSchemes = true;
+    await user.save();
+
     // Clean up
     delete userContext[phone];
-    res.status(200).send('Success');
   } catch (error) {
     console.error('Webhook error:', error);
-    res.status(500).send('Server error');
   }
 });
 
