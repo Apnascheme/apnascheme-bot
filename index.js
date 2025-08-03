@@ -1101,7 +1101,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `आसान एक्सेस के लिए सीधे आवेदन लिंक\n\n` +
                       `तुरंत लाभ उठाएँ!\nसीमित समय ऑफर: \n${paymentUrl}\n\n` +
                       `अपने दोस्तों को भेजें और ₹60 कमाएं:\n` +
-                      `https://wa.me/?text=मैंने%20ApnaScheme%20से%20${eligibleSchemes.length}%20योजनाएं%20प्राप्त%20की%20हैं!%20आप%20भी%20पाएं%20अपने%20लिए%20सरकारी%20योजनाएं:%20$wa.me/917977594397?text=Hi\n\n` +
+                      `https://wa.me/?text=मैंने%20ApnaScheme%20से%20${eligibleSchemes.length}%20योजनाएं%20प्राप्त%20की%20हैं!%20आप%20भी%20पाएं%20अपने%20लिए%20सरकारी%20योजनाएं:\n%20$wa.me/917977594397?text=Hi\n\n` +
                       `हर 3 दोस्तों के ₹49 भुगतान करने पर आपको ₹60 मिलेगा!`;
       } else if (user.language === '2') {
         closingMessage = `Exciting News!\nYou Qualify for ${eligibleSchemes.length} government schemes.\n\n` +
@@ -1110,7 +1110,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `Direct application links\n\n` +
                       `Act Now!\nLimited-time offer: \n${paymentUrl}\n\n` +
                       `Refer friends & earn ₹60:\n` +
-                      `https://wa.me/?text=I%20got%20${eligibleSchemes.length}%20government%20schemes%20from%20ApnaScheme!%20You%20can%20too:%20$wa.me/917977594397?text=Hi\n\n` +
+                      `https://wa.me/?text=I%20got%20${eligibleSchemes.length}%20government%20schemes%20from%20ApnaScheme!%20You%20can%20too:\n%20$wa.me/917977594397?text=Hi\n\n` +
                       `Earn ₹60 for every 3 friends who pay ₹49!`;
       } else {
         closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
@@ -1119,7 +1119,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `अर्जासाठी थेट लिंक\n\n` +
                       `लगेच अर्ज करा!\nमर्यादित वेळ ऑफर: \n${paymentUrl}\n\n` +
                       `मित्रांना पाठवा आणि ₹60 मिळवा:\n` +
-                      `https://wa.me/?text=मी%20ApnaScheme%20मधून%20${eligibleSchemes.length}%20योजना%20मिळवल्या!%20तुम्ही%20ही%20मिळवा:%20$wa.me/917977594397?text=Hi\n\n` +
+                      `https://wa.me/?text=मी%20ApnaScheme%20मधून%20${eligibleSchemes.length}%20योजना%20मिळवल्या!%20तुम्ही%20ही%20मिळवा:\n%20$wa.me/917977594397?text=Hi\n\n` +
                       `प्रत्येक 3 मित्रांसाठी जे ₹49 भरतील तुम्हाला ₹60 मिळेल!`;
       }
 
