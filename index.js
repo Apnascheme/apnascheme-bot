@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema({
   state: String,
   eligibilityCount: Number,
   referralCode: String,
-  referredBy: String,
+  referredBy: { type: String, default: null },
   paymentStatus: { type: String, default: 'pending' },
   razorpayOrderId: String,
   razorpayPaymentId: String,
@@ -58,7 +58,10 @@ const userSchema = new mongoose.Schema({
   hasReceivedSchemes: {
     type: Boolean,
     default: false
-  }
+  },
+  referralCount: { type: Number, default: 0 },
+  referralRewardedSets: { type: Number, default: 0 },
+  referralRewarded: { type: Boolean, default: false }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -66,6 +69,11 @@ const User = mongoose.model('User', userSchema);
 // Helper function to generate referral code
 function generateReferralCode(phone) {
   return 'REF' + phone.slice(-4) + Math.floor(1000 + Math.random() * 9000).toString().slice(0, 2);
+}
+
+// Helper function to get user by phone
+async function getUserByPhone(phone) {
+  return await User.findOne({ phone });
 }
 
 // Middleware
@@ -911,6 +919,35 @@ app.post('/razorpay-webhook', bodyParser.raw({type: 'application/json'}), async 
 
     console.log('✅ Payment verified and user updated for phone:', phone);
 
+    // Referral logic - AFTER successful payment
+    if (
+      user.referredBy &&
+      user.referredBy !== user.phone &&       // prevent self-referral
+      !user.referralRewarded                 // prevent double-counting
+    ) {
+      const referrer = await getUserByPhone(user.referredBy);
+
+      if (referrer) {
+        referrer.referralCount = (referrer.referralCount || 0) + 1;
+
+        // Check if 3-paid-referral set threshold is reached
+        const totalSets = Math.floor(referrer.referralCount / 3);
+        const paidSets = referrer.referralRewardedSets || 0;
+
+        if (totalSets > paidSets) {
+          await sendMessage(referrer.phone,
+            `बधाई हो! आपके 3 referrals ने ₹49 भुगतान किया है। ₹60 cashback जल्द भेजा जाएगा।`);
+
+          // Update paid sets count
+          referrer.referralRewardedSets = totalSets;
+        }
+
+        await referrer.save();
+        user.referralRewarded = true;
+        await user.save();
+      }
+    }
+
     const eligibleSchemes = getEligibleSchemes(user.responses);
     const lang = user.language || '2';
 
@@ -988,12 +1025,23 @@ app.post('/gupshup', express.json(), async (req, res) => {
     let user = await User.findOne({ phone });
 
     if (!user) {
+      // Check for referral parameter
+      if (req.query.ref && req.query.ref !== phone) {
+        user = new User({ 
+          phone, 
+          referredBy: req.query.ref,
+          responses: [] 
+        });
+      } else {
+        user = new User({ phone, responses: [] });
+      }
+
       if (msg.includes('1')) {
-        user = new User({ phone, language: '1', responses: [] });
+        user.language = '1';
       } else if (msg.includes('2')) {
-        user = new User({ phone, language: '2', responses: [] });
+        user.language = '2';
       } else if (msg.includes('3')) {
-        user = new User({ phone, language: '3', responses: [] });
+        user.language = '3';
       } else {
         await sendMessage(phone, 
           "Namaste!\nMain hoon ApnaScheme - aapka Sarkari Saathi! 🇮🇳\n" +
@@ -1036,43 +1084,48 @@ app.post('/gupshup', express.json(), async (req, res) => {
     const next = getNextQuestion(user);
     if (next) {
       await sendMessage(phone, next);
-    } else {
-      const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}`;
-      const eligibleSchemes = getEligibleSchemes(user.responses);
-      
-      // Generate referral code if not exists
-      if (!user.referralCode) {
-        user.referralCode = generateReferralCode(phone);
-        await user.save();
-      }
+   } else {
+  const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}`;
+  const eligibleSchemes = getEligibleSchemes(user.responses);
+  
+  // Generate referral code if not exists
+  if (!user.referralCode) {
+    user.referralCode = generateReferralCode(phone);
+    await user.save();
+  }
 
-      let closingMessage = "";
-      if (user.language === '1') {
-        closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
-                      `केवल ₹49 में,\nतुरंत प्राप्त करें:\n` +
-                      `योजनाओं की पूरी सूची\n` +
-                      `आसान एक्सेस के लिए सीधे आवेदन लिंक\n\n` +
-                      `तुरंत लाभ उठाएँ!\nसीमित समय ऑफर: \n${paymentUrl}\n\n` +
-                      `इन लाभों को मिस न करें.`;
-      } else if (user.language === '2') {
-        closingMessage = `Exciting News!\nYou Qualify for ${eligibleSchemes.length} government schemes.\n\n` +
-                      `For only ₹49,\ninstantly receive:\n` +
-                      `List of all eligible schemes\n` +
-                      `Direct application links\n\n` +
-                      `Act Now!\nLimited-time offer: \n${paymentUrl}\n\n` +
-                      `Don't miss out on these benefits.`;
-      } else {
-        closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
-                      `फक्त ₹49 मध्ये,\nताबडतोब मिळवा:\n` +
-                      `योजनांची संपूर्ण यादी\n` +
-                      `अर्जासाठी थेट लिंक\n\n` +
-                      `लगेच अर्ज करा!\nमर्यादित वेळ ऑफर: \n${paymentUrl}\n\n` +
-                      `या फायद्यांना चुकू नका.`;
-      }
+  let closingMessage = "";
+  if (user.language === '1') {
+    closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
+                  `केवल ₹49 में,\nतुरंत प्राप्त करें:\n` +
+                  `योजनाओं की पूरी सूची\n` +
+                  `आसान एक्सेस के लिए सीधे आवेदन लिंक\n\n` +
+                  `तुरंत लाभ उठाएँ!\nसीमित समय ऑफर: \n${paymentUrl}\n\n` +
+                  `अपने दोस्तों को भेजें और ₹60 कमाएं:\n` +
+                  `https://wa.me/?text=मैंने%20ApnaScheme%20से%20${eligibleSchemes.length}%20योजनाएं%20प्राप्त%20की%20हैं!%20आप%20भी%20पाएं%20अपने%20लिए%20सरकारी%20योजनाएं:%20${paymentUrl}?ref=${user.phone}\n\n` +
+                  `हर 3 दोस्तों के ₹49 भुगतान करने पर आपको ₹60 मिलेगा!`;
+  } else if (user.language === '2') {
+    closingMessage = `Exciting News!\nYou Qualify for ${eligibleSchemes.length} government schemes.\n\n` +
+                  `For only ₹49,\ninstantly receive:\n` +
+                  `List of all eligible schemes\n` +
+                  `Direct application links\n\n` +
+                  `Act Now!\nLimited-time offer: \n${paymentUrl}\n\n` +
+                  `Refer friends & earn ₹60:\n` +
+                  `https://wa.me/?text=I%20got%20${eligibleSchemes.length}%20government%20schemes%20from%20ApnaScheme!%20You%20can%20too:%20${paymentUrl}?ref=${user.phone}\n\n` +
+                  `Earn ₹60 for every 3 friends who pay ₹49!`;
+  } else {
+    closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
+                  `फक्त ₹49 मध्ये,\nताबडतोब मिळवा:\n` +
+                  `योजनांची संपूर्ण यादी\n` +
+                  `अर्जासाठी थेट लिंक\n\n` +
+                  `लगेच अर्ज करा!\nमर्यादित वेळ ऑफर: \n${paymentUrl}\n\n` +
+                  `मित्रांना पाठवा आणि ₹60 मिळवा:\n` +
+                  `https://wa.me/?text=मी%20ApnaScheme%20मधून%20${eligibleSchemes.length}%20योजना%20मिळवल्या!%20तुम्ही%20ही%20मिळवा:%20${paymentUrl}?ref=${user.phone}\n\n` +
+                  `प्रत्येक 3 मित्रांसाठी जे ₹49 भरतील तुम्हाला ₹60 मिळेल!`;
+  }
 
-      await sendMessage(phone, closingMessage);
-    }
-
+  await sendMessage(phone, closingMessage);
+}
     res.sendStatus(200);
   } catch (error) {
     console.error('Error in /gupshup endpoint:', error);
