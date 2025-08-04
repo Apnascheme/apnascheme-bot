@@ -198,7 +198,6 @@ async function loadSchemes() {
     });
   });
 }
-
 function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
@@ -237,7 +236,21 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
       return false;
     }
 
-    // Occupation filtering
+    // Occupation filtering - specific schemes
+    // E-Shram filtering: Exclude full-time students
+    if (schemeNameLower.includes('e-shram') && occupationLower.includes('student')) {
+      return false;
+    }
+
+    // NSAP filtering: Only for senior citizens, disabled, widows
+    if (schemeNameLower.includes('nsap')) {
+      const isSenior = age >= 60;
+      const isDisabled = occupationLower.includes('disabled');
+      const isWidow = occupationLower.includes('widow') || occupationLower.includes('widow');
+      if (!isSenior && !isDisabled && !isWidow) return false;
+    }
+
+    // General occupation filtering
     if (scheme.EmploymentFilter && scheme.EmploymentFilter !== 'All') {
       const schemeOccupation = scheme.EmploymentFilter.toLowerCase();
       if (!occupationLower.includes(schemeOccupation)) {
@@ -256,14 +269,11 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     // Income check
     if (scheme.IncomeLimit && income > scheme.IncomeLimit) return false;
 
-    // Caste filtering
+    // Tightened caste check
     if (scheme.CasteEligibility && scheme.CasteEligibility !== 'All') {
       const schemeCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       const userCaste = caste?.toLowerCase()?.trim() || '';
-      if (!schemeCastes.includes(userCaste)) {
-        if (userCaste === 'general' && !schemeCastes.includes('general')) return false;
-        if (userCaste === 'no' && !schemeCastes.includes('general')) return false;
-      }
+      if (!schemeCastes.includes(userCaste)) return false;
     }
 
     // Bank account required
@@ -281,7 +291,6 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     return true;
   });
 }
-
 const mapAnswer = (lang, qIndex, rawInput) => {
   const mapping = OPTION_MAPPINGS[lang]?.[qIndex];
   return mapping?.[rawInput] || rawInput;
