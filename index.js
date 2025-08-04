@@ -1084,7 +1084,33 @@ app.post('/gupshup', express.json(), async (req, res) => {
     const next = getNextQuestion(user);
     if (next) {
       await sendMessage(phone, next);
-   } else {
+    } else {
+      const eligibleSchemes = getEligibleSchemes(user.responses);
+      user.eligibilityCount = eligibleSchemes.length;
+      await user.save();
+
+
+      // Check if there are 0 eligible schemes
+      if (eligibleSchemes.length === 0) {
+        let noSchemeMessage = '';
+        
+        if (user.language === '1') { // Hindi
+          noSchemeMessage = `माफ कीजिए, आपके लिए अभी कोई सरकारी योजना उपलब्ध नहीं है।\n\n` +
+                          `नए स्कीम्स जोड़े जाते रहते हैं – कृपया 15 दिन बाद दोबारा जांचें।`;
+        } 
+        else if (user.language === '3') { // Marathi
+          noSchemeMessage = `क्षमस्व, सध्या आपल्यासाठी कोणतीही सरकारी योजना उपलब्ध नाही.\n\n` +
+                          `नवीन योजना सतत जोडल्या जातात – कृपया १५ दिवसांनी पुन्हा तपासा.`;
+        } 
+        else { // English (default)
+          noSchemeMessage = `Sorry, there are currently no government schemes available for you.\n\n` +
+                          `New schemes are added regularly – check again in 15 days!`;
+        }
+
+        await sendMessage(phone, noSchemeMessage);
+        return res.sendStatus(200);
+      }
+   
   const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}${user.referredBy ? `&ref=${user.referredBy}` : ''}`;
       const eligibleSchemes = getEligibleSchemes(user.responses);
       
