@@ -1089,7 +1089,6 @@ app.post('/gupshup', express.json(), async (req, res) => {
       user.eligibilityCount = eligibleSchemes.length;
       await user.save();
 
-
       // Check if there are 0 eligible schemes
       if (eligibleSchemes.length === 0) {
         let noSchemeMessage = '';
@@ -1110,15 +1109,14 @@ app.post('/gupshup', express.json(), async (req, res) => {
         await sendMessage(phone, noSchemeMessage);
         return res.sendStatus(200);
       }
-   
-  const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}${user.referredBy ? `&ref=${user.referredBy}` : ''}`;
-      const eligibleSchemes = getEligibleSchemes(user.responses);
-      
+
+      // Only show payment link if there are eligible schemes
+      const paymentUrl = `${req.protocol}://${req.get('host')}/pay?phone=${phone}${user.referredBy ? `&ref=${user.referredBy}` : ''}`;
+
       if (!user.referralCode) {
         user.referralCode = generateReferralCode(phone);
         await user.save();
       }
-
       let closingMessage = "";
       if (user.language === '1') {
         closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
