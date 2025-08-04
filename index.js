@@ -1128,7 +1128,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
       }
       let closingMessage = "";
       if (user.language === '1') {
-        closingMessage = `रोमांचक खबर!\nआप ${eligibleSchemes.length} सरकारी योजनाओं के लिए पात्र हैं.\n\n` +
+        closingMessage = `बधाई हो!\nआपके लिए ${eligibleSchemes.length} सरकारी योजनाएं इंतज़ार कर रही हैं\n\n` +
                       `केवल ₹49 में,\nतुरंत प्राप्त करें:\n` +
                       `योजनाओं की पूरी सूची\n` +
                       `आसान एक्सेस के लिए सीधे आवेदन लिंक\n\n` +
@@ -1137,7 +1137,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `https://wa.me/?text=मैंने%20ApnaScheme%20से%20${eligibleSchemes.length}%20योजनाएं%20प्राप्त%20की%20हैं!%20आप%20भी%20पाएं%20अपने%20लिए%20सरकारी%20योजनाएं:%20wa.me/917977594397?text=Hi\n\n` +
                       `हर 3 दोस्तों के ₹49 भुगतान करने पर आपको ₹60 मिलेगा!`;
       } else if (user.language === '2') {
-        closingMessage = `Exciting News!\nYou Qualify for ${eligibleSchemes.length} government schemes.\n\n` +
+        closingMessage = `CONGRATULATIONS!\n${eligibleSchemes.length} government schemes are waiting for you.\n\n` +
                       `For only ₹49,\ninstantly receive:\n` +
                       `List of all eligible schemes\n` +
                       `Direct application links\n\n` +
@@ -1146,7 +1146,7 @@ app.post('/gupshup', express.json(), async (req, res) => {
                       `https://wa.me/?text=I%20got%20${eligibleSchemes.length}%20government%20schemes%20from%20ApnaScheme!%20You%20can%20too:%20wa.me/917977594397?text=Hi\n\n` +
                       `Earn ₹60 for every 3 friends who pay ₹49!`;
       } else {
-        closingMessage = `आनंददायी बातमी!\nतुम्ही ${eligibleSchemes.length} सरकारी योजनांसाठी पात्र आहात.\n\n` +
+        closingMessage = `अभिनंदन!!\nतुमच्यासाठी ${eligibleSchemes.length} सरकारी योजना वाट पाहत आहेत.\n\n` +
                       `फक्त ₹49 मध्ये,\nताबडतोब मिळवा:\n` +
                       `योजनांची संपूर्ण यादी\n` +
                       `अर्जासाठी थेट लिंक\n\n` +
