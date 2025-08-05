@@ -1105,15 +1105,25 @@ app.post('/gupshup', express.json(), async (req, res) => {
         
         if (user.language === '1') { // Hindi
           noSchemeMessage = `माफ कीजिए, आपके लिए अभी कोई सरकारी योजना उपलब्ध नहीं है।\n\n` +
-                          `नए स्कीम्स जोड़े जाते रहते हैं – कृपया 15 दिन बाद दोबारा जांचें।`;
+                          `नए स्कीम्स जोड़े जाते रहते हैं – कृपया 15 दिन बाद दोबारा जांचें।`+
+                           `अपने दोस्तों को भेजें और ₹60 कमाएं:`+
+                           `https://wa.me/?text=मैंने%20ApnaScheme%20से%20${eligibleSchemes.length}%20योजनाएं%20प्राप्त%20की%20हैं!%20आप%20भी%20पाएं%20अपने%20लिए%20सरकारी%20योजनाएं:%20wa.me/917977594397?text=Hi\n\n`+
+                            `हर 3 दोस्तों के ₹49 भुगतान करने पर आपको ₹60 मिलेगा!`;
         } 
         else if (user.language === '3') { // Marathi
           noSchemeMessage = `क्षमस्व, सध्या आपल्यासाठी कोणतीही सरकारी योजना उपलब्ध नाही.\n\n` +
-                          `नवीन योजना सतत जोडल्या जातात – कृपया १५ दिवसांनी पुन्हा तपासा.`;
+                          `नवीन योजना सतत जोडल्या जातात – कृपया १५ दिवसांनी पुन्हा तपासा.`+
+                           `मित्रांना पाठवा आणि ₹60 मिळवा:`+
+                          `https://wa.me/?text=मी%20ApnaScheme%20मधून%20${eligibleSchemes.length}%20योजना%20मिळवल्या!%20तुम्ही%20ही%20मिळवा:%20wa.me/917977594397?text=Hi\n\n`+
+                           `प्रत्येक 3 मित्रांसाठी जे ₹49 भरतील तुम्हाला ₹60 मिळेल!`;
         } 
         else { // English (default)
           noSchemeMessage = `Sorry, there are currently no government schemes available for you.\n\n` +
-                          `New schemes are added regularly – check again in 15 days!`;
+                          `New schemes are added regularly – check again in 15 days!\n`+
+                          `Refer friends & earn ₹60:\n`+
+                          `https://wa.me/?text=I%20got%20${eligibleSchemes.length}%20government%20schemes%20from%20ApnaScheme!%20You%20can%20too:%20wa.me/917977594397?text=Hi\n\n`+
+                          `Earn ₹60 for every 3 friends who pay ₹49!`;
+                          
         }
 
         await sendMessage(phone, noSchemeMessage);
