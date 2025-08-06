@@ -277,10 +277,10 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
     }
 
     // 🔴 Bank account must be present
-    if (scheme.BankAccountRequired?.toLowerCase() === 'yes') {
-      const acceptedValues = ['yes', 'हाँ', 'होय', 'haan', 'हां', 'y'];
-      if (!acceptedValues.includes(hasBankLower)) return false;
-    }
+  if (scheme.BankAccountRequired === true) {
+  const acceptedValues = ['yes', 'हाँ', 'होय', 'haan', 'हां', 'y'];
+  if (!acceptedValues.includes(hasBankLower)) return false;
+}
 
     // 🔴 Aadhaar/ration required
     if (scheme.AadhaarRequired?.toLowerCase() === 'yes') {
