@@ -202,49 +202,48 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
   const [gender, age, occupation, income, hasBank, hasRation, state, caste] = userResponses;
 
   return schemes.filter(scheme => {
-    if (!scheme || scheme.ActiveStatus !== 'Active') return false;
+    if (!scheme || scheme.ActiveStatus?.toLowerCase() !== 'active') return false;
 
     const schemeNameLower = scheme.SchemeName?.toLowerCase() || '';
-    const occupationLower = occupation?.toLowerCase() || '';
-    const genderLower = gender?.toLowerCase() || '';
-    const userState = state?.toLowerCase()?.trim() || '';
-    const schemeState = scheme.TargetState?.toLowerCase()?.trim() || '';
-    const userCaste = caste?.toLowerCase()?.trim() || '';
-    const hasBankLower = hasBank?.toLowerCase() || '';
-    const hasRationLower = hasRation?.toLowerCase() || '';
+    const occupationLower = occupation?.toLowerCase().trim() || '';
+    const genderLower = gender?.toLowerCase().trim() || '';
+    const userState = state?.toLowerCase().trim() || '';
+    const schemeState = scheme.TargetState?.toLowerCase().trim() || '';
+    const userCaste = caste?.toLowerCase().trim() || '';
+    const hasBankLower = hasBank?.toLowerCase().trim() || '';
+    const hasRationLower = hasRation?.toLowerCase().trim() || '';
 
-    // 🔴 Gender-specific schemes (no males in women-only schemes)
-    const womenKeywords = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti'];
+    // 🔴 Gender-specific hard block (no exception)
+    const womenKeywords = ['matru', 'ujjwala', 'sukanya', 'ladli', 'bhagyashree', 'janani', 'beti', 'kanya'];
     if (womenKeywords.some(word => schemeNameLower.includes(word)) &&
         !['female', 'महिला', 'स्त्री', 'woman', 'girl'].includes(genderLower)) {
       return false;
     }
 
-    // 🔴 Disability-specific schemes
+    // 🔴 Disability schemes must be disabled
     const disabilityKeywords = ['disability', 'divyang', 'viklang', 'udid', 'adip'];
     if (disabilityKeywords.some(word => schemeNameLower.includes(word)) &&
         !occupationLower.includes('disabled')) {
       return false;
     }
 
-    // 🔴 Maternity/health schemes
+    // 🔴 Maternity-specific schemes: strict female + age band
     const maternityKeywords = ['janani', 'matru', 'maternity'];
-    if (maternityKeywords.some(word => schemeNameLower.includes(word)) &&
-        (genderLower !== 'female' || age < 13 || age > 50)) {
-      return false;
+    if (maternityKeywords.some(word => schemeNameLower.includes(word))) {
+      if (genderLower !== 'female' || age < 13 || age > 50) return false;
     }
 
-    // 🔴 Rashtriya Arogya Nidhi
+    // 🔴 Critical illness schemes (e.g., Rashtriya Arogya Nidhi)
     if (schemeNameLower.includes('rashtriya arogya nidhi') && !hasCriticalIllness) {
       return false;
     }
 
-    // 🔴 Specific filters
+    // 🔴 Schemes blocked for students (e.g., eShram)
     if (schemeNameLower.includes('e-shram') && occupationLower.includes('student')) {
       return false;
     }
 
-    // 🔴 NSAP
+    // 🔴 NSAP logic: only disabled, widow, or senior
     if (schemeNameLower.includes('nsap')) {
       const isSenior = age >= 60;
       const isDisabled = occupationLower.includes('disabled');
@@ -252,40 +251,41 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
       if (!isSenior && !isDisabled && !isWidow) return false;
     }
 
-    // 🔴 Employment filter
-    if (scheme.EmploymentFilter && scheme.EmploymentFilter.toLowerCase() !== 'all') {
+    // 🔴 Employment requirement
+    if (scheme.EmploymentFilter && scheme.EmploymentFilter.toLowerCase().trim() !== 'all') {
       const required = scheme.EmploymentFilter.toLowerCase().trim();
-      if (!occupationLower.includes(required)) {
-        return false;
-      }
+      if (!occupationLower.includes(required)) return false;
     }
 
-    // 🔴 State-specific schemes
+    // 🔴 Strict state match
     if (schemeState !== 'all india' && schemeState !== userState) return false;
 
-    // 🔴 Age filter
-    const minAge = parseInt(scheme.MinAge) || 0;
-    const maxAge = parseInt(scheme.MaxAge) || 100;
+    // 🔴 Age limits enforced
+    const minAge = parseInt(scheme.MinAge, 10);
+    const maxAge = parseInt(scheme.MaxAge, 10);
+    if (isNaN(minAge) || isNaN(maxAge)) return false;
     if (age < minAge || age > maxAge) return false;
 
-    // 🔴 Income filter
-    const schemeIncomeLimit = parseInt(scheme.IncomeLimit) || Infinity;
-    if (income > schemeIncomeLimit) return false;
+    // 🔴 Income eligibility
+    const incomeLimit = parseInt(scheme.IncomeLimit, 10);
+    if (!isNaN(incomeLimit) && income > incomeLimit) return false;
 
-    // 🔴 Caste filter
+    // 🔴 Caste check
     if (scheme.CasteEligibility && scheme.CasteEligibility.toLowerCase() !== 'all') {
       const allowedCastes = scheme.CasteEligibility.split('/').map(c => c.trim().toLowerCase());
       if (!allowedCastes.includes(userCaste)) return false;
     }
 
-    // 🔴 Bank account required
+    // 🔴 Bank account must be present
     if (scheme.BankAccountRequired?.toLowerCase() === 'yes') {
-      if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasBankLower)) return false;
+      const acceptedValues = ['yes', 'हाँ', 'होय', 'haan', 'हां', 'y'];
+      if (!acceptedValues.includes(hasBankLower)) return false;
     }
 
-    // 🔴 Aadhaar or ration (used as proxy)
+    // 🔴 Aadhaar/ration required
     if (scheme.AadhaarRequired?.toLowerCase() === 'yes') {
-      if (!['हाँ', 'yes', 'होय', 'y', 'haan', 'हां'].includes(hasRationLower)) return false;
+      const acceptedValues = ['yes', 'हाँ', 'होय', 'haan', 'हां', 'y'];
+      if (!acceptedValues.includes(hasRationLower)) return false;
     }
 
     return true;
