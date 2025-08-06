@@ -283,7 +283,7 @@ function getEligibleSchemes(userResponses, hasCriticalIllness = false) {
 }
 
     // 🔴 Aadhaar/ration required
-    if (scheme.AadhaarRequired?.toLowerCase() === 'yes') {
+    if (scheme.AadhaarRequired === true) {
       const acceptedValues = ['yes', 'हाँ', 'होय', 'haan', 'हां', 'y'];
       if (!acceptedValues.includes(hasRationLower)) return false;
     }
