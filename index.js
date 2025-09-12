@@ -1065,10 +1065,10 @@ app.post('/gupshup', express.json(), async (req, res) => {
         user.language = '3';
       } else {
         await sendMessage(phone, 
-          "Namaste!\nMain hoon ApnaScheme - aapka Sarkari Saathi! 🇮🇳\n" +
-          "Mere saath, pata karein\nKaunsi FREE government schemes aapke liye hai:\n" +
-          "Bina agents\nBina Form\nBina Confusion\n\n"+
-          "🗣️ Apni bhaasha chunein\n(Reply 1/2/3 to answer):\n" +
+          "नमस्ते!\nमैं हूँ अपनास्कीम - आपका सरकारी साथी! 🇮🇳\n" +
+          "मेरे साथ, जानें \nकौन सी मुफ़्त सरकारी योजनाएं आपके लिए हैं:\n" +
+          "बिना एजेंट\nबिना फॉर्म\nबिना भ्रम\n\n"+
+          "🗣️ अपनी भाषा चुनें \n(जवाब दें 1/2/3/4):\n" +
           "1. हिंदी\n2. English\n3. मराठी\n4. ગુજરાતી "
         );
         return res.sendStatus(200);
